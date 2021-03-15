@@ -24,12 +24,9 @@ def import_data( name ):
             for i in df.keys():
                 df[i]=df[i].set_index('Client')
             merged_df = df[1]
-            merged_df = merged_df.merge(df[2], how='outer', on='Client' )
-            merged_df = merged_df.merge(df[3], how='outer', on='Client' )
-            merged_df = merged_df.merge(df[4], how='outer', on='Client' )
-            print(merged_df.head())
+            for i in range( 2, 5 ):
+                merged_df = merged_df.merge(df[i], how='outer', on='Client' )
             merged_df = merged_df.reset_index()
-            print(merged_df.head())
 
             merged_df.to_csv( '.'.join(name_csv), index=False )
             return merged_df

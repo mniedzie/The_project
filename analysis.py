@@ -8,6 +8,10 @@ from sklearn.preprocessing import OneHotEncoder
 
 import matplotlib.pyplot as plt
 
+from xgboost import XGBClassifier
+import xgboost as xgb
+from xgboost import cv
+
 
 
 if __name__ == '__main__' :
@@ -62,6 +66,8 @@ if __name__ == '__main__' :
 
 #    for i,j in noisy_batch_gen( train_set_tr, train_set_labels_arr, scaler_sc, 200 ):
 #        print(i[0,0], j[0,0])
+
+    data_dmatrix = xgb.DMatrix( data = train_set_tr, label = train_set_labels_arr )
 
 
 
