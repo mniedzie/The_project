@@ -20,48 +20,64 @@ if __name__ == '__main__' :
 
     data = data[ data[ 'Age' ] > 17 ]
 
-    data_VolDebNaN = data[ data['VolumeDeb'].isna() ]
     data_predict = data[data['Sale_MF'].isna()]
     data = data[data['Sale_MF'].notna()]
 
-    data_VolDebNaN.hist( bins=50, figsize=(20,15), log=True )
-    plt.show()
+#    data_VolDebNaN.hist( bins=50, figsize=(20,15), log=True )
+#    plt.show()
     
 #    data.hist( bins=50, figsize=(20,15), log=True )
 #    plt.show()
 
     train_set, test_set = train_test_split( data, test_size=0.2, random_state=42)
+    train_set, val_set = train_test_split( train_set, test_size=0.2, random_state=42)
 
-    test_set_labels  =  test_set[ [ 'Client', 'Sale_MF',  'Sale_CC',  'Sale_CL',  'Revenue_MF',  'Revenue_CC',  'Revenue_CL' ] ]
-    train_set_labels = train_set[ [ 'Client', 'Sale_MF',  'Sale_CC',  'Sale_CL',  'Revenue_MF',  'Revenue_CC',  'Revenue_CL' ] ]
+    label_names = [ 'Sale_MF',  'Sale_CC',  'Sale_CL',  'Revenue_MF',  'Revenue_CC',  'Revenue_CL' ]
 
-    test_set  =  test_set.drop( [ 'Sale_MF',  'Sale_CC',  'Sale_CL',  'Revenue_MF',  'Revenue_CC',  'Revenue_CL' ], axis = 1 )
-    train_set = train_set.drop( [ 'Sale_MF',  'Sale_CC',  'Sale_CL',  'Revenue_MF',  'Revenue_CC',  'Revenue_CL' ], axis = 1 )
+    test_set_labels  =  test_set[ label_names ]
+    train_set_labels = train_set[ label_names ]
+
+    test_set  =  test_set.drop( [ 'Client', 'Sale_MF',  'Sale_CC',  'Sale_CL',  'Revenue_MF',  'Revenue_CC',  'Revenue_CL' ], axis = 1 )
+    train_set = train_set.drop( [ 'Client', 'Sale_MF',  'Sale_CC',  'Sale_CL',  'Revenue_MF',  'Revenue_CC',  'Revenue_CL' ], axis = 1 )
     
-    scaled_items = [ x for x in train_set.columns.values.tolist() if 'Client' not in x]
-
     num_pipeline = Pipeline([ ( 'att_mod', CustomOperations() ),
-                              ( 'imputer', SimpleImputer( strategy='mean' ) ),
                               ( 'std_scaler', StandardScaler() ),
     ])
 
-    id_pipeline = Pipeline([ ( 'imputer', SimpleImputer( strategy='mean' ) ),
-    ])
-
     full_pipe = ColumnTransformer([
-        ( 'id', id_pipeline, [ 'Client' ] ), 
-#        ( 'num', num_pipeline, train_set.columns.values.tolist() ), 
-        ( 'num', num_pipeline, scaled_items ), 
+        ( 'num', num_pipeline, train_set.columns.values.tolist() ), 
 #        ( 'cat', OneHotEncoder(), [ 'Sex' ] )
     ])
 
     train_set_tr = full_pipe.fit_transform( train_set )
+
     test_set_tr = full_pipe.transform( test_set )
 
     scaler_sc   = full_pipe.named_transformers_['num'].named_steps.std_scaler.scale_;
     scaler_mean = full_pipe.named_transformers_['num'].named_steps.std_scaler.mean_;
 
-    scaler_sc   = np.concatenate( [ [0.], scaler_sc ] ) 
+#    scaler_sc   = np.concatenate( [ [0.], scaler_sc ] ) 
+
+    train_set_labels_arr = train_set_labels.to_numpy()
+
+#    for i,j in noisy_batch_gen( train_set_tr, train_set_labels_arr, scaler_sc, 200 ):
+#        print(i[0,0], j[0,0])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #    print( train_set_tr.shape )
 #    print( train_set_tr )
@@ -71,7 +87,6 @@ if __name__ == '__main__' :
 
 
 #    print(test_set_labels.head())
-    train_set_labels_arr = train_set_labels.to_numpy()
 #    print( train_set_labels_arr[0] )
 #    print( train_set_tr[0] )
 

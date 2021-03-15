@@ -7,7 +7,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.impute import SimpleImputer
 import seaborn as sns
 
-def import_data(name):
+def import_data( name ):
 
     ext = name.split('/')[-1].split('.')[-1]
     base = name.split('.')[0]
@@ -19,6 +19,7 @@ def import_data(name):
             df = pd.read_csv( '.'.join(name_csv), index_col=None)
         else: 
             print("reading xlsx file and saving to csv")
+            # first sheet contains feature/label description, so i do not keep it
             df = pd.read_excel(name, engine='openpyxl', sheet_name = [ 1, 2, 3, 4] )
             for i in df.keys():
                 df[i]=df[i].set_index('Client')
@@ -39,6 +40,50 @@ def import_data(name):
         print("Unrecognized data type")
         exit(0)
     return df
+
+class CustomOperations( BaseEstimator, TransformerMixin ):
+    # custom transformer, to process 'Sex' feature and to set zero 
+    # to missing values (could be done with SimpleImputer)
+    def __init__( self, keepCustomerDateOnly = True ):
+        self.keepCustomerDateOnly = keepCustomerDateOnly
+    def fit( self, X, y=None ):
+        return self
+    def transform( self, X, y=None):
+        # Format sex as -1, 0, 1 for M, NaN, F
+        X['Sex']=X['Sex'].fillna('X')
+        X['Sex']=X['Sex'].replace(['M','F','X'],[-1,1,0])
+        ToSetToZero = [ x for x in X.columns if 'Count' in x or 'ActBal' in x or 'Volume' in x or 'Transactions' in x ]
+        X[ ToSetToZero ]=X[ ToSetToZero ].fillna(0)
+
+        return X
+
+def add_noise( data, sigma ):
+    if data.shape[1] != sigma.shape[0]:
+        print( ' Wrong shape of the inputs. ' )
+    modifier = np.random.normal( scale = sigma, size = ( data.shape[0], sigma.shape[0] ) )
+    return data + modifier
+
+
+def noisy_batch_gen( data, labels, sigma, batch_size ):
+    while True:
+        data_noisy = add_noise( data, sigma )
+        p = np.random.permutation( data.shape[0] )
+        data_shuffled = data_noisy[p]
+        labels_shuffled = labels[p]
+        for i in range( 0, data.shape[0], batch_size ):
+            yield data_shuffled[ i:i+batch_size, :], labels_shuffled[ i:i+batch_size, :]
+
+
+def noisy_batch_gen2( data, sigma, batch_size ):
+    while True:
+        data_noisy = add_noise( data, sigma )
+        for i in range( 0, data.shape[0], batch_size ):
+            yield data_noisy[ i:i+batch_size, :]
+
+
+
+
+
 
 def explore_data(data):
 
@@ -79,40 +124,5 @@ def explore_data(data):
 #        
 #    plt.show()
 
-class CustomOperations( BaseEstimator, TransformerMixin ):
-    def __init__( self, keepCustomerDateOnly = True ):
-        self.keepCustomerDateOnly = keepCustomerDateOnly
-    def fit( self, X, y=None ):
-        return self
-    def transform( self, X, y=None):
-        # Format sex as -1, 0, 1 for M, NaN, F
-        X['Sex']=X['Sex'].fillna('X')
-        X['Sex']=X['Sex'].replace(['M','F','X'],[-1,1,0])
-        ToSetToZero = [ x for x in X.columns if 'Count' in x or 'ActBal' in x or 'Volume' in x or 'Transactions' in x ]
-        X[ ToSetToZero ]=X[ ToSetToZero ].fillna(0)
-
-        return X
-
-def add_noise( data, sigma ):
-    if data.shape[1] != sigma.shape[0]:
-        print( ' Wrong shape of the inputs. ' )
-    modifier = np.random.normal( scale = sigma, size = ( data.shape[0], 30 ) )
-    return data + modifier
-
-
-
-def noisy_batch_gen2( data, labels, sigma, batch_size ):
-    while True:
-        data_noisy = add_noise( data, sigma )
-        p = np.random.permutation( data.shape[0] )
-        data_shuffled = data_noisy[p]
-        labels_shuffled = labels[p]
-        for i in range( 0, data.shape[0], batch_size ):
-            yield data_shuffled[ i:i+batch_size, :], labels_shuffled[ i:i+batch_size, :]
-
-def noisy_batch_gen( data, sigma, batch_size ):
-    while True:
-        data_noisy = add_noise( data, sigma )
-        for i in range( 0, data.shape[0], batch_size ):
-            yield data_noisy[ i:i+batch_size, :]
-
+    data_MF =       data[ data['Sale_MF'] == 1]
+    print( data_MF.describe() )
