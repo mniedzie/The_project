@@ -19,7 +19,7 @@ from sklearn.linear_model import LinearRegression
 
 from data_exp import *
 from nn import *
-
+from result_functions import *
 
 if __name__ == '__main__' :
 
@@ -94,127 +94,179 @@ if __name__ == '__main__' :
     test_set_tr = full_pipe.transform( test_set )
 
 
-    train_set_tr, val_set_tr, train_set_labels, val_set_labels = train_test_split( train_set_tr, train_set_labels, test_size=0.2 )#, random_state=42)
-
+#    train_set_tr, val_set_tr, train_set_labels, val_set_labels = train_test_split( train_set_tr, train_set_labels, test_size=0.2, random_state=42)
+#
     train_set_labels_arr = train_set_labels.to_numpy()
     test_set_labels_arr = test_set_labels.to_numpy()
-    val_set_labels_arr = val_set_labels.to_numpy()
-
-#    k = 10
-#    num_samples = len(train_set_tr) // k
-#    for i in range(10):
-#        val_set_tr     = train_set_tr[ i * num_samples: (i + 1) * num_samples ]
-#        val_set_labels = train_set_labels_arr[ i * num_samples: (i + 1) * num_samples ]
-#
-#        train_set_fold = np.concatenate(
-#          [ train_set_tr[ : i * num_samples],
-#            train_set_tr[ (i + 1) * num_samples : ] ],
-#            axis = 0
-#        )
-#
-#        train_set_labels_fold = np.concatenate(
-#          [ train_set_labels[ : i * num_samples],
-#            train_set_labels[ (i + 1) * num_samples : ] ],
-#            axis = 0
-#        )
-#
+#    val_set_labels_arr = val_set_labels.to_numpy()
 
     # I have all the data processed, I can start analysing it. 
 
+    k = 5
+    num_samples = len(train_set_tr) // k
+    trainings = 1
 
-    input_shape = train_set_tr.shape[1:]
-    #train_steps_per_epoch = ( len(train_set_tr)//32 ) + 1
+    counts = []
+    pred_revs = []
+    true_revs = []
+    targeteds = []
 
-    # I define and compile my NN
-    model = buildRegressor(input_shape, 2, 32, 0.5 )
-    compileModel( model )
+    counts_xgb = []
+    pred_revs_xgb = []
+    true_revs_xgb = []
 
-    # I will simultaneously fit categorization and classification, I split the labels into those
-    train_labels_class = train_set_labels_arr[:,:3]
-    train_labels_reg = train_set_labels_arr[:,3:]
+    for i in range(k):
+        val_set_tr     = train_set_tr[ i * num_samples: (i + 1) * num_samples ]
+        val_set_labels = train_set_labels_arr[ i * num_samples: (i + 1) * num_samples ]
 
-    val_labels_class = val_set_labels_arr[:,:3]
-    val_labels_reg = val_set_labels_arr[:,3:]
+        train_set_fold = np.concatenate(
+          [ train_set_tr[ : i * num_samples],
+            train_set_tr[ (i + 1) * num_samples : ] ],
+            axis = 0
+        )
 
-    # and I train the model
-    training_history=model.fit(
-        train_set_tr,
-        [train_labels_class, train_labels_reg],
-        #sample_weight=train_weights,
-        epochs=300,
-        verbose=2,
-        batch_size=64,
-        validation_data=(val_set_tr, [val_labels_class, val_labels_reg] )
-    )
+        train_set_labels_fold = np.concatenate(
+          [ train_set_labels[ : i * num_samples],
+            train_set_labels[ (i + 1) * num_samples : ] ],
+            axis = 0
+        )
 
-    train_loss = training_history.history['loss']
-    val_loss = training_history.history['val_loss']
+        input_shape = train_set_fold.shape[1:]
+
+
+        # I will simultaneously fit categorization and classification, I split the labels into those
+        train_labels_class = train_set_labels_fold[:,:3]
+        train_labels_reg = train_set_labels_fold[:,3:]
+
+        val_labels_class = val_set_labels[:,:3]
+        val_labels_reg = val_set_labels[:,3:]
+
+        all_scores = []
+        all_pred = []
+        train_losses = []
+        val_losses = []
+        predictions = np.empty( val_set_labels.shape )
+        truth       = val_set_labels
+
+        # and I train the model defined amount of times
+        for _ in range(trainings):
+            # I define and compile my NN
+            model = buildRegressor(input_shape, 2, 32, 0.5 )
+            compileModel( model )
+            training_history=model.fit(
+                train_set_fold,
+                [train_labels_class, train_labels_reg],
+                #sample_weight=train_weights,
+                epochs=50,
+                verbose=2,
+                batch_size=64,
+                validation_data=( val_set_tr, [val_labels_class, val_labels_reg] )
+            )
+
+            train_loss = training_history.history['loss']
+            val_loss = training_history.history['val_loss']
+            train_losses.append( train_loss )
+            val_losses.append( val_loss )
+            
+
+            class_prediction = model.predict( val_set_tr )[0]
+            regre_prediction = model.predict( val_set_tr )[1]
+            #regre_prediction[:,0] = regre_prediction[:,0] * MF_std + MF_mean
+            #regre_prediction[:,1] = regre_prediction[:,1] * CC_std + CC_mean
+            #regre_prediction[:,2] = regre_prediction[:,2] * CL_std + CL_mean
+
+            #val_set_labels_arr[:,3] = val_set_labels_arr[:,3] * MF_std + MF_mean
+            #val_set_labels_arr[:,4] = val_set_labels_arr[:,4] * CC_std + CC_mean
+            #val_set_labels_arr[:,5] = val_set_labels_arr[:,5] * CL_std + CL_mean
+
+            output = np.concatenate( [ class_prediction, regre_prediction ], axis = 1 )
+            predictions += output
+
+        # here we dont take into account that we can sell multiple items to the same person
+        # naive check here tries to sell the 1 best option to the top outputs
+
+        # Normalize prediction sum by # of trainings, to get the average, duh
+        prediction = predictions/trainings
+        # get the count of the clients got right, and the revenue values and save it for future
+        count, pred_rev, true_rev = get_predictions( truth, prediction )
+        counts.append( count )
+        pred_revs.append( pred_rev )
+        true_revs.append( true_rev )
+        targeteds.append( int( len(prediction) * 0.15 ) )
+
+        # I train bdts for classification and regression
+
+        train_labels_xgb = []
+        val_labels_xgb = []
+        data_matrices = []
+        val_matrices = []
+        for i in range(6):
+            train_labels_xgb.append( train_set_labels_fold[:,i] )
+            val_labels_xgb.append( val_set_labels[:,i] )
+            data_matrices.append( xgb.DMatrix( data = train_set_fold, label = train_labels_xgb[i], feature_names =  train_set.columns.values.tolist()  ) )
+            val_matrices.append( xgb.DMatrix( data = val_set_tr, label = val_labels_xgb[i], feature_names =  train_set.columns.values.tolist() ) )
+
+        param_cla = {
+                'objective':'binary:logistic',
+                'max_depth': 5,
+                'learning_rate': 0.1,
+        }
+        param_reg = {
+                'objective':'reg:squarederror',
+                'max_depth': 5,
+                'learning_rate': 0.1,
+        }
     
-    epochs = range(1, len(train_loss) + 1)
     
-#    plt.plot(epochs, train_loss, 'b', label = 'training loss')
-#    plt.plot(epochs, val_loss, 'r', label = 'validation loss')
-#    plt.xlabel("Epochs")
-#    plt.ylabel("Loss")
-#    plt.legend(numpoints = 1)
-#    plt.savefig("nn_loss.pdf")
+        pred_xgb = []
+        for i in range(3): 
+            xgb_r = xgb.train( params = param_cla, dtrain = data_matrices[ i ] )
+            pred = xgb_r.predict( val_matrices[ i ] )
+            pred_xgb.append(pred)
+        for i in range(3): 
+            xgb_r = xgb.train( params = param_reg, dtrain = data_matrices[ 3 + i ] )
+            pred = xgb_r.predict( val_matrices[ 3 + i ] )
+            pred_xgb.append( pred )
 
-    class_prediction = model.predict( val_set_tr )[0]
-    regre_prediction = model.predict( val_set_tr )[1]
-    regre_prediction[:,0] = regre_prediction[:,0] * MF_std + MF_mean
-    regre_prediction[:,1] = regre_prediction[:,1] * CC_std + CC_mean
-    regre_prediction[:,2] = regre_prediction[:,2] * CL_std + CL_mean
+        prediction_xgb = np.array( [ [ pred_xgb[0][i], pred_xgb[1][i], pred_xgb[2][i], pred_xgb[3][i], pred_xgb[4][i], pred_xgb[5][i] ] for i in range( len( pred_xgb[5] ) )  ] )
+        count, pred_rev, true_rev = get_predictions( truth, prediction_xgb )
+        counts_xgb.append( count )
+        pred_revs_xgb.append( pred_rev )
+        true_revs_xgb.append( true_rev )
+#        xgb.plot_importance(xgb_r)
+#        plt.figure(figsize = (16, 12))
+#        plt.show()
 
-    val_set_labels_arr[:,3] = val_set_labels_arr[:,3] * MF_std + MF_mean
-    val_set_labels_arr[:,4] = val_set_labels_arr[:,4] * CC_std + CC_mean
-    val_set_labels_arr[:,5] = val_set_labels_arr[:,5] * CL_std + CL_mean
+    for i in range( k ):
+        print( 'Out of top {}, {} are nonzero'.format(targeteds[i], counts[i]) )
+        print( 'Out of top {}, {} are nonzero from xgb'.format(targeteds[i], counts_xgb[i]) )
+        print( 'Pred revenue is {} truth value is {}'.format( pred_revs[i], true_revs[i] ) )
+        print( 'Pred revenue is {} truth value is {} using xgb'.format( pred_revs_xgb[i], true_revs_xgb[i] ) )
+    print( 'SUM: Pred revenue is {} truth value is {}'.format( sum( pred_revs ), sum( true_revs ) ) )
+    print( 'SUM: Pred revenue is {} truth value is {} using xgb'.format( sum( pred_revs_xgb), sum( true_revs_xgb ) ) )
 
-    prediction = np.concatenate( [ class_prediction, regre_prediction ], axis = 1 )
-    truth      = val_set_labels_arr
-
-    label_pred = [ ( list(l), list(p) ) for l, p in zip( truth, prediction ) ]
-
-    # here we dont take into account that we can sell multiple items to the same person
-    # naive check here tries to sell the 1 best option to the top outputs
-    def sort_key( label_pred ):
-        label_list, pred_list = label_pred
-        class_list = pred_list[:3]
-        return max( class_list)
-
-    label_pred = sorted( label_pred, key = sort_key, reverse = True )
-
-    import operator
-
-
-    count = 0
-    pred_rev = 0
-    true_rev = 0
-    targeted = int( len(label_pred) * 0.15 )
-    print( 'Targeting {} out of {} available'.format(targeted, len(label_pred)) )
-    for label_list, pred_list in label_pred[:targeted]:
-        index, value = max(enumerate(pred_list [:3] ), key=operator.itemgetter(1))
-        if label_list[index] > 0:
-            count += 1
-        pred_rev += pred_list[ index + 3 ]
-        true_rev += label_list[ index + 3 ]
-    print( 'Out of top {}, {} are nonzero'.format(targeted, count) )
-    print( 'The predicted revenue is {} and truth value is {}'.format( pred_rev, true_rev ) )
-
-    MF_prediction = prediction[:,3] * MF_std + MF_mean
-    MF_truth      = truth[:,3] * MF_std + MF_mean
-    CC_prediction = prediction[:,4] * CC_std + CC_mean
-    CC_truth      = truth[:,4] * CC_std + CC_mean
-    CL_prediction = prediction[:,4] * CL_std + CL_mean
-    CL_truth      = truth[:,4] * CL_std + CL_mean
-    
-    print(MF_prediction.shape)
-    plt.scatter( y = MF_prediction, x = MF_truth, label = 'MF revenue', cmap=plt.get_cmap("jet"), alpha=0.2 )
-    plt.scatter( y = CC_prediction, x = CC_truth, label = 'MF revenue', cmap=plt.get_cmap("jet"), alpha=0.2 )
-    plt.scatter( y = CL_prediction, x = CL_truth, label = 'MF revenue', cmap=plt.get_cmap("jet"), alpha=0.2 )
-    plt.xlabel("true revenue")
-    plt.ylabel("predicted")
-    plt.legend()
-    plt.savefig("rev_scatter.pdf")
+#            epochs = range(1, len(train_loss) + 1)
+#            plt.plot(epochs, train_loss, 'b', label = 'training loss')
+#            plt.plot(epochs, val_loss, 'r', label = 'validation loss')
+#            plt.xlabel("Epochs")
+#            plt.ylabel("Loss")
+#            plt.legend(numpoints = 1)
+#            plt.savefig("nn_loss.pdf")
+#    MF_prediction = prediction[:,3] * MF_std + MF_mean
+#    MF_truth      = truth[:,3] * MF_std + MF_mean
+#    CC_prediction = prediction[:,4] * CC_std + CC_mean
+#    CC_truth      = truth[:,4] * CC_std + CC_mean
+#    CL_prediction = prediction[:,4] * CL_std + CL_mean
+#    CL_truth      = truth[:,4] * CL_std + CL_mean
+#    
+#    print(MF_prediction.shape)
+#    plt.scatter( y = MF_prediction, x = MF_truth, label = 'MF revenue', cmap=plt.get_cmap("jet"), alpha=0.2 )
+#    plt.scatter( y = CC_prediction, x = CC_truth, label = 'MF revenue', cmap=plt.get_cmap("jet"), alpha=0.2 )
+#    plt.scatter( y = CL_prediction, x = CL_truth, label = 'MF revenue', cmap=plt.get_cmap("jet"), alpha=0.2 )
+#    plt.xlabel("true revenue")
+#    plt.ylabel("predicted")
+#    plt.legend()
+#    plt.savefig("rev_scatter.pdf")
 
 
 #    print( val_set_labels_arr[ val_set_labels_arr > 0 ] )
