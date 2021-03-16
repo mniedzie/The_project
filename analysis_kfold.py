@@ -104,7 +104,7 @@ if __name__ == '__main__' :
 
     k = 5
     num_samples = len(train_set_tr) // k
-    trainings = 1
+    trainings = 10
 
     counts = []
     pred_revs = []
@@ -145,7 +145,7 @@ if __name__ == '__main__' :
         all_pred = []
         train_losses = []
         val_losses = []
-        predictions = np.empty( val_set_labels.shape )
+        predictions = np.zeros( val_set_labels.shape )
         truth       = val_set_labels
 
         # and I train the model defined amount of times
@@ -157,7 +157,7 @@ if __name__ == '__main__' :
                 train_set_fold,
                 [train_labels_class, train_labels_reg],
                 #sample_weight=train_weights,
-                epochs=50,
+                epochs=300,
                 verbose=2,
                 batch_size=64,
                 validation_data=( val_set_tr, [val_labels_class, val_labels_reg] )
@@ -171,13 +171,10 @@ if __name__ == '__main__' :
 
             class_prediction = model.predict( val_set_tr )[0]
             regre_prediction = model.predict( val_set_tr )[1]
-            #regre_prediction[:,0] = regre_prediction[:,0] * MF_std + MF_mean
-            #regre_prediction[:,1] = regre_prediction[:,1] * CC_std + CC_mean
-            #regre_prediction[:,2] = regre_prediction[:,2] * CL_std + CL_mean
+            regre_prediction[:,0] = regre_prediction[:,0] * MF_std + MF_mean
+            regre_prediction[:,1] = regre_prediction[:,1] * CC_std + CC_mean
+            regre_prediction[:,2] = regre_prediction[:,2] * CL_std + CL_mean
 
-            #val_set_labels_arr[:,3] = val_set_labels_arr[:,3] * MF_std + MF_mean
-            #val_set_labels_arr[:,4] = val_set_labels_arr[:,4] * CC_std + CC_mean
-            #val_set_labels_arr[:,5] = val_set_labels_arr[:,5] * CL_std + CL_mean
 
             output = np.concatenate( [ class_prediction, regre_prediction ], axis = 1 )
             predictions += output
@@ -187,6 +184,9 @@ if __name__ == '__main__' :
 
         # Normalize prediction sum by # of trainings, to get the average, duh
         prediction = predictions/trainings
+        truth[:,3] = truth[:,3] * MF_std + MF_mean
+        truth[:,4] = truth[:,4] * CC_std + CC_mean
+        truth[:,5] = truth[:,5] * CL_std + CL_mean
         # get the count of the clients got right, and the revenue values and save it for future
         count, pred_rev, true_rev = get_predictions( truth, prediction )
         counts.append( count )
@@ -227,6 +227,9 @@ if __name__ == '__main__' :
             xgb_r = xgb.train( params = param_reg, dtrain = data_matrices[ 3 + i ] )
             pred = xgb_r.predict( val_matrices[ 3 + i ] )
             pred_xgb.append( pred )
+        pred_xgb[3] = pred_xgb[3] * MF_std + MF_mean
+        pred_xgb[4] = pred_xgb[4] * CC_std + CC_mean
+        pred_xgb[5] = pred_xgb[5] * CL_std + CL_mean
 
         prediction_xgb = np.array( [ [ pred_xgb[0][i], pred_xgb[1][i], pred_xgb[2][i], pred_xgb[3][i], pred_xgb[4][i], pred_xgb[5][i] ] for i in range( len( pred_xgb[5] ) )  ] )
         count, pred_rev, true_rev = get_predictions( truth, prediction_xgb )
