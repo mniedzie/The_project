@@ -9,14 +9,14 @@ import seaborn as sns
 
 def import_data( name ):
 
-    ext = name.split('/')[-1].split('.')[-1]
-    base = name.split('.')[0]
-    if ext == "xlsx":
-        name_csv=name.split(".")
-        name_csv[-1]="csv"
-        if os.path.isfile(  '.'.join(name_csv) ):
+    root_ext = os.path.splitext( name )
+    ext = root_ext[1]
+    base = root_ext[0]
+    if ext == ".xlsx":
+        name_csv=root_ext[0]+".csv"
+        if os.path.isfile(  name_csv ):
             print("reading existing csv version of xlsx file")
-            df = pd.read_csv( '.'.join(name_csv), index_col=None)
+            df = pd.read_csv( name_csv, index_col=None)
         else: 
             print("reading xlsx file and saving to csv")
             # first sheet contains feature/label description, so i do not keep it
@@ -28,9 +28,9 @@ def import_data( name ):
                 merged_df = merged_df.merge(df[i], how='outer', on='Client' )
             merged_df = merged_df.reset_index()
 
-            merged_df.to_csv( '.'.join(name_csv), index=False )
+            merged_df.to_csv( name_csv, index=False )
             return merged_df
-    elif ext == "csv":
+    elif ext == ".csv":
         print("reading csv file")
         df = pd.read_csv(name, index_col=None)
     else:
@@ -123,3 +123,70 @@ def explore_data(data):
 
     data_MF =       data[ data['Sale_MF'] == 1]
     print( data_MF.describe() )
+
+
+
+    # scatter plots of campaign succes, led me to the numbers below
+
+    attr_to_scatter = [ 'Sale_MF',  'Sale_CC',  'Sale_CL' ]
+    pd.plotting.scatter_matrix( data[ attr_to_scatter ], figsize = ( 12, 8) )
+    plt.show()
+
+    # checking how often more than one campaign works
+
+    dataMF = data[ data['Sale_MF'] == 1]
+    dataCC = data[ data['Sale_CC'] == 1]
+    dataCL = data[ data['Sale_CL'] == 1]
+
+    dataMFCL = dataMF[ dataMF['Sale_CL'] == 1]
+    dataMFCC = dataMF[ dataMF['Sale_CC'] == 1]
+    dataCLCC = dataCL[ dataCL['Sale_CC'] == 1]
+
+    dataMFCLCC = dataMFCL[ dataMFCL['Sale_CC'] == 1]
+    print( 'MF', dataMF['Sale_MF'].sum() )
+    print( 'CC', dataCC['Sale_CC'].sum() )
+    print( 'CL', dataCL['Sale_CL'].sum() )
+                  
+    print( 'MFCL', dataMFCL['Sale_MF'].sum() )
+    print( 'MFCC', dataMFCC['Sale_CC'].sum() )
+    print( 'CLCC', dataCLCC['Sale_CL'].sum() )
+                  
+    print( 'MFCLCC', dataMFCLCC['Sale_CL'].sum() )
+
+    # checking how well each revenue is sampled into train/test sets
+
+    train_set, test_set = train_test_split( data, test_size=0.2, random_state=42)
+
+    f,ax = plt.subplots(3, 4, figsize = (14, 10))
+    ax[0,0].hist( data['Revenue_MF'], bins = 20, log=True  , label = 'whole MF rev' )
+    ax[0,0].legend()
+    ax[0,1].hist( data['Revenue_CC'], bins = 20, log=True, label = 'whole CC rev'   )
+    ax[0,1].legend()
+    ax[0,2].hist( data['Revenue_CL'], bins = 20, log=True, label = 'whole CL rev'   )
+    ax[0,2].legend()
+    ax[0,3].hist( data['Revenue_max'], bins = 50, log=True, label = 'whole max rev'   )
+    ax[0,3].legend()
+    ax[1,0].hist( train_set['Revenue_MF'], bins = 20, log=True, label = 'train MF rev'   )
+    ax[1,0].legend()
+    ax[1,1].hist( train_set['Revenue_CC'], bins = 20, log=True, label = 'train CC rev'   )
+    ax[1,1].legend()
+    ax[1,2].hist( train_set['Revenue_CL'], bins = 20, log=True, label = 'train CL rev'   )
+    ax[1,2].legend()
+    ax[1,3].hist( train_set['Revenue_max'], bins = 20, log=True, label = 'train max rev'   )
+    ax[1,3].legend()
+    ax[2,0].hist( test_set['Revenue_MF'], bins = 20, log=True, label = 'test MF rev'   )
+    ax[2,0].legend()
+    ax[2,1].hist( test_set['Revenue_CC'], bins = 20, log=True, label = 'test CC rev'   )
+    ax[2,1].legend()
+    ax[2,2].hist( test_set['Revenue_CL'], bins = 20, log=True, label = 'test CL rev'   )
+    ax[2,2].legend()
+    ax[2,3].hist( test_set['Revenue_max'], bins = 20, log=True, label = 'test max rev'   )
+    ax[2,3].legend()
+    plt.show()
+
+    data_VolDebNaN.hist( bins=50, figsize=(20,15), log=True )
+    plt.show()
+
+    scaler_sc   = full_pipe.named_transformers_['num'].named_steps.std_scaler.scale_;
+    scaler_mean = full_pipe.named_transformers_['num'].named_steps.std_scaler.mean_;
+
