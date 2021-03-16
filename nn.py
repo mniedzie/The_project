@@ -22,7 +22,7 @@ def buildRegressor( input_shape, num_hidden_layers, nodes_per_layer, dropout_rat
         # regularized with l2 weights, linear activation here beacues whatever other activation should be applied 
         # only after batchnormalization, each layer has same number of nodes
         intermed = tf.keras.layers.Dense( nodes_per_layer, activation = 'linear', kernel_regularizer=tf.keras.regularizers.l2( l2_weight ) )( intermed )
-        intermed = tf.keras.layers.BatchNormalization()( intermed )
+#        intermed = tf.keras.layers.BatchNormalization()( intermed )
         intermed = tf.keras.layers.PReLU()( intermed )
         if dropout_rate > 0:
             intermed = tf.keras.layers.Dropout( dropout_rate )( intermed )

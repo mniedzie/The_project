@@ -50,6 +50,8 @@ if __name__ == '__main__' :
         train_set = data.iloc[ train_ix ]
         test_set  = data.iloc[ test_ix ]
     data = data.drop( 'Revenue_max', axis = 1 )
+    train_set = train_set.drop( 'Revenue_max', axis = 1 )
+    test_set  = test_set .drop( 'Revenue_max', axis = 1 )
 #    train_set, test_set = train_test_split( data, test_size=0.2, random_state=42)
     
     # separate labels and features
@@ -98,9 +100,11 @@ if __name__ == '__main__' :
     test_set_labels_arr = test_set_labels.to_numpy()
 #    val_set_labels_arr = val_set_labels.to_numpy()
 
+    # I have all the data processed, I can start analysing it. 
+
     k = 5
     num_samples = len(train_set_tr) // k
-    trainings = 10
+    trainings = 3
 
     counts = []
     pred_revs = []
@@ -127,11 +131,7 @@ if __name__ == '__main__' :
             axis = 0
         )
 
-
-        # I have all the data processed, I can start analysing it. 
-
         input_shape = train_set_fold.shape[1:]
-        #train_steps_per_epoch = ( len(train_set_tr)//32 ) + 1
 
         # I define and compile my NN
         model = buildRegressor(input_shape, 2, 32, 0.5 )
@@ -152,7 +152,7 @@ if __name__ == '__main__' :
         predictions = np.empty( val_set_labels.shape )
         truth       = val_set_labels
 
-        # and I train the model 10 times
+        # and I train the model defined amount of times
         for _ in range(trainings):
             training_history=model.fit(
                 train_set_fold,
@@ -170,19 +170,12 @@ if __name__ == '__main__' :
             train_losses.append( train_loss )
             val_losses.append( val_loss )
             
-#            epochs = range(1, len(train_loss) + 1)
-#            plt.plot(epochs, train_loss, 'b', label = 'training loss')
-#            plt.plot(epochs, val_loss, 'r', label = 'validation loss')
-#            plt.xlabel("Epochs")
-#            plt.ylabel("Loss")
-#            plt.legend(numpoints = 1)
-#            plt.savefig("nn_loss.pdf")
 
             class_prediction = model.predict( val_set_tr )[0]
             regre_prediction = model.predict( val_set_tr )[1]
 
-            prediction = np.concatenate( [ class_prediction, regre_prediction ], axis = 1 )
-            predictions += prediction
+            output = np.concatenate( [ class_prediction, regre_prediction ], axis = 1 )
+            predictions += output
 
         # here we dont take into account that we can sell multiple items to the same person
         # naive check here tries to sell the 1 best option to the top outputs
@@ -235,24 +228,25 @@ if __name__ == '__main__' :
         counts_xgb.append( count )
         pred_revs_xgb.append( pred_rev )
         true_revs_xgb.append( true_rev )
+#        xgb.plot_importance(xgb_r)
+#        plt.figure(figsize = (16, 12))
+#        plt.show()
 
-#    #    print( val_set_labels_arr.flatten() )
-#        rmse = np.sqrt(MSE( val_set_labels_arr, pred))
-#    #    print( 'Validation rms error: ', rmse )
-#        train_pred = xgb_r.predict( data_dmatrix )
-#        train_rmse = np.sqrt(MSE( train_set_labels_arr, train_pred))
-#    #    print( 'Train rms error: ', train_rmse )
-#    
-#    #    xgb.plot_importance(xgb_r)
-#    #    plt.figure(figsize = (16, 12))
-#    #    plt.show()
-
-    for i in range( trainings ):
+    for i in range( k ):
         print( 'Out of top {}, {} are nonzero'.format(targeteds[i], counts[i]) )
         print( 'Out of top {}, {} are nonzero from xgb'.format(targeteds[i], counts_xgb[i]) )
-        print( 'The predicted revenue is {} and truth value is {}'.format( pred_revs[i], true_revs[i] ) )
-        print( 'The predicted revenue is {} and truth value is {} using xgb'.format( pred_revs_xgb[i], true_revs_xgb[i] ) )
+        print( 'Pred revenue is {} truth value is {}'.format( pred_revs[i], true_revs[i] ) )
+        print( 'Pred revenue is {} truth value is {} using xgb'.format( pred_revs_xgb[i], true_revs_xgb[i] ) )
+    print( 'SUM: Pred revenue is {} truth value is {}'.format( sum( pred_revs ), sum( true_revs ) ) )
+    print( 'SUM: Pred revenue is {} truth value is {} using xgb'.format( sum( pred_revs_xgb), sum( true_revs_xgb ) ) )
 
+#            epochs = range(1, len(train_loss) + 1)
+#            plt.plot(epochs, train_loss, 'b', label = 'training loss')
+#            plt.plot(epochs, val_loss, 'r', label = 'validation loss')
+#            plt.xlabel("Epochs")
+#            plt.ylabel("Loss")
+#            plt.legend(numpoints = 1)
+#            plt.savefig("nn_loss.pdf")
 #    MF_prediction = prediction[:,3] * MF_std + MF_mean
 #    MF_truth      = truth[:,3] * MF_std + MF_mean
 #    CC_prediction = prediction[:,4] * CC_std + CC_mean

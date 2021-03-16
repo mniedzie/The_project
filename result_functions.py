@@ -1,4 +1,5 @@
 import operator
+import numpy as np
 
 
 def sort_key_cla( label_pred ):
@@ -9,6 +10,12 @@ def sort_key_rev( label_pred ):
     label_list, pred_list = label_pred
     class_list = pred_list[3:]
     return max( class_list)
+def sort_key_product( label_pred ):
+    label_list, pred_list = label_pred
+    cla_list = np.array( pred_list[ :3 ])
+    reg_list = np.array( pred_list[ 3: ])
+    final_list = cla_list*reg_list
+    return max( final_list.tolist() )
 
 
 
