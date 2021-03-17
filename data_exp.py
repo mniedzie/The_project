@@ -190,3 +190,40 @@ def explore_data(data):
     scaler_sc   = full_pipe.named_transformers_['num'].named_steps.std_scaler.scale_;
     scaler_mean = full_pipe.named_transformers_['num'].named_steps.std_scaler.mean_;
 
+def set_color(row):
+    color = 'black'
+    if row[ 'Sale_MF' ] == 1 and row[ 'Sale_CC' ] == 1 and row[ 'Sale_CL' ] == 1:
+        color = 'gold'
+    elif row[ 'Sale_MF' ] == 1 and row[ 'Sale_CC' ] == 1:
+        color = 'orange'
+    elif row[ 'Sale_MF' ] == 1 and row[ 'Sale_CL' ] == 1:
+        color = 'fuchsia'
+    elif row[ 'Sale_CL' ] == 1 and row[ 'Sale_CC' ] == 1:
+        color = 'turquoise'
+    elif row[ 'Sale_CL' ]:
+        color = 'royalblue'
+    elif row[ 'Sale_CC' ]:
+        color = 'forestgreen'
+    elif row[ 'Sale_MF' ]:
+        color = 'red'
+    return color
+
+def set_weight(row):
+    weight = 6
+    if row[ 'Sale_MF' ] == 1 and row[ 'Sale_CC' ] == 1 and row[ 'Sale_CL' ] == 1:
+        weight = row[ 'Revenue_MF' ] + row[ 'Revenue_CC' ] + row[ 'Revenue_CL' ]
+    elif row[ 'Sale_MF' ] == 1 and row[ 'Sale_CC' ] == 1:
+        weight = row[ 'Revenue_MF' ] + row[ 'Revenue_CC' ] 
+    elif row[ 'Sale_MF' ] == 1 and row[ 'Sale_CL' ] == 1:
+        weight = row[ 'Revenue_MF' ] + row[ 'Revenue_CL' ]
+    elif row[ 'Sale_CL' ] == 1 and row[ 'Sale_CC' ] == 1:
+        weight = row[ 'Revenue_CC' ] + row[ 'Revenue_CL' ]
+    elif row[ 'Sale_CL' ]:
+        weight = row[ 'Revenue_CL' ]
+    elif row[ 'Sale_CC' ]:
+        weight = row[ 'Revenue_CC' ]
+    elif row[ 'Sale_MF' ]:
+        weight = row[ 'Revenue_MF' ]
+    return weight
+
+

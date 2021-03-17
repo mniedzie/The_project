@@ -15,6 +15,7 @@ from xgboost import XGBClassifier
 import xgboost as xgb
 from xgboost import cv
 
+from sklearn.linear_model import SGDClassifier
 from sklearn.linear_model import LinearRegression
 
 from data_exp import *
@@ -45,7 +46,7 @@ if __name__ == '__main__' :
                                     labels = [ 1, 2, 3, 4, 5 ])
 
     # split the data while maintaining the max revenue shape
-    split = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
+    split = StratifiedShuffleSplit(n_splits=1, test_size=0.2)#, random_state=42)
     for train_ix, test_ix in split.split( data, data[ 'Revenue_max' ] ):
         train_set = data.iloc[ train_ix ]
         test_set  = data.iloc[ test_ix ]
@@ -105,31 +106,42 @@ if __name__ == '__main__' :
     k = 5
     num_samples = len(train_set_tr) // k
     trainings = 10
+    nepochs = 300
 
-    counts = []
-    pred_revs = []
-    true_revs = []
-    targeteds = []
-
-    counts_xgb = []
+    counts = []       
+    pred_revs = []    
+    true_revs = []    
+    targeteds = []   
+                      
+    counts_xgb = []   
     pred_revs_xgb = []
     true_revs_xgb = []
 
+    counts_classic = []   
+    pred_revs_classic = []
+    true_revs_classic = []
+
+
     for i in range(k):
-        val_set_tr     = train_set_tr[ i * num_samples: (i + 1) * num_samples ]
-        val_set_labels = train_set_labels_arr[ i * num_samples: (i + 1) * num_samples ]
+        if k == 1:
+            print(' One fold chosen, will use random split with 20% validation ')
+            train_set_fold, val_set_tr, train_set_labels_fold, val_set_labels = train_test_split( train_set_tr, train_set_labels, test_size=0.2, random_state=42)
+        else:
+            print(' Using k-fold sen, currently in fold {} '.format(i+1) )
+            val_set_tr     = train_set_tr[ i * num_samples: (i + 1) * num_samples ]
+            val_set_labels = train_set_labels_arr[ i * num_samples: (i + 1) * num_samples ]
 
-        train_set_fold = np.concatenate(
-          [ train_set_tr[ : i * num_samples],
-            train_set_tr[ (i + 1) * num_samples : ] ],
-            axis = 0
-        )
+            train_set_fold = np.concatenate(
+              [ train_set_tr[ : i * num_samples],
+                train_set_tr[ (i + 1) * num_samples : ] ],
+                axis = 0
+            )
 
-        train_set_labels_fold = np.concatenate(
-          [ train_set_labels[ : i * num_samples],
-            train_set_labels[ (i + 1) * num_samples : ] ],
-            axis = 0
-        )
+            train_set_labels_fold = np.concatenate(
+              [ train_set_labels[ : i * num_samples],
+                train_set_labels[ (i + 1) * num_samples : ] ],
+                axis = 0
+            )
 
         input_shape = train_set_fold.shape[1:]
 
@@ -149,7 +161,8 @@ if __name__ == '__main__' :
         truth       = val_set_labels
 
         # and I train the model defined amount of times
-        for _ in range(trainings):
+        for j in range(trainings):
+            print( '\n\nTraining NN model number {} in fold {}\n\n'.format(j+1, i+1) )
             # I define and compile my NN
             model = buildRegressor(input_shape, 2, 32, 0.5 )
             compileModel( model )
@@ -157,7 +170,7 @@ if __name__ == '__main__' :
                 train_set_fold,
                 [train_labels_class, train_labels_reg],
                 #sample_weight=train_weights,
-                epochs=300,
+                epochs= nepochs,
                 verbose=2,
                 batch_size=64,
                 validation_data=( val_set_tr, [val_labels_class, val_labels_reg] )
@@ -171,9 +184,6 @@ if __name__ == '__main__' :
 
             class_prediction = model.predict( val_set_tr )[0]
             regre_prediction = model.predict( val_set_tr )[1]
-            regre_prediction[:,0] = regre_prediction[:,0] * MF_std + MF_mean
-            regre_prediction[:,1] = regre_prediction[:,1] * CC_std + CC_mean
-            regre_prediction[:,2] = regre_prediction[:,2] * CL_std + CL_mean
 
 
             output = np.concatenate( [ class_prediction, regre_prediction ], axis = 1 )
@@ -182,18 +192,29 @@ if __name__ == '__main__' :
         # here we dont take into account that we can sell multiple items to the same person
         # naive check here tries to sell the 1 best option to the top outputs
 
-        # Normalize prediction sum by # of trainings, to get the average, duh
+        # Normalize prediction sum by # of trainings, to get the average, scale the revenues back
         prediction = predictions/trainings
-        truth[:,3] = truth[:,3] * MF_std + MF_mean
-        truth[:,4] = truth[:,4] * CC_std + CC_mean
-        truth[:,5] = truth[:,5] * CL_std + CL_mean
+        scaled_prediction = np.ndarray.copy(prediction)
+        scaled_prediction[:,3] = scaled_prediction[:,3] * MF_std + MF_mean
+        scaled_prediction[:,4] = scaled_prediction[:,4] * CC_std + CC_mean
+        scaled_prediction[:,5] = scaled_prediction[:,5] * CL_std + CL_mean
+        scaled_truth = np.ndarray.copy(truth)
+        scaled_truth[:,3] = scaled_truth[:,3] * MF_std + MF_mean
+        scaled_truth[:,4] = scaled_truth[:,4] * CC_std + CC_mean
+        scaled_truth[:,5] = scaled_truth[:,5] * CL_std + CL_mean
         # get the count of the clients got right, and the revenue values and save it for future
-        count, pred_rev, true_rev = get_predictions( truth, prediction )
-        counts.append( count )
-        pred_revs.append( pred_rev )
-        true_revs.append( true_rev )
-        targeteds.append( int( len(prediction) * 0.15 ) )
 
+        count1, pred_rev1, true_rev1 = get_predictions( scaled_truth, scaled_prediction, 1 )
+        count2, pred_rev2, true_rev2 = get_predictions( scaled_truth, scaled_prediction, 2 )
+        count3, pred_rev3, true_rev3 = get_predictions( scaled_truth, scaled_prediction, 3 )
+        count4, pred_rev4, true_rev4 = get_predictions( scaled_truth, scaled_prediction, 4 )
+        count5, pred_rev5, true_rev5 = get_predictions( scaled_truth, scaled_prediction, 5 )
+
+        counts.append( [ count1, count2, count3, count4, count5]  )
+        pred_revs.append( [ pred_rev1, pred_rev2, pred_rev3, pred_rev4, pred_rev5]  )
+        true_revs.append( [ true_rev1, true_rev2, true_rev3, true_rev4, true_rev5]  )
+
+        targeteds.append( [int( len(prediction) * 0.15 )] )
         # I train bdts for classification and regression
 
         train_labels_xgb = []
@@ -223,30 +244,158 @@ if __name__ == '__main__' :
             xgb_r = xgb.train( params = param_cla, dtrain = data_matrices[ i ] )
             pred = xgb_r.predict( val_matrices[ i ] )
             pred_xgb.append(pred)
+            #xgb.plot_importance(xgb_r)
+            #plt.figure(figsize = (16, 12))
+            #plt.show()
         for i in range(3): 
             xgb_r = xgb.train( params = param_reg, dtrain = data_matrices[ 3 + i ] )
             pred = xgb_r.predict( val_matrices[ 3 + i ] )
             pred_xgb.append( pred )
-        pred_xgb[3] = pred_xgb[3] * MF_std + MF_mean
-        pred_xgb[4] = pred_xgb[4] * CC_std + CC_mean
-        pred_xgb[5] = pred_xgb[5] * CL_std + CL_mean
 
         prediction_xgb = np.array( [ [ pred_xgb[0][i], pred_xgb[1][i], pred_xgb[2][i], pred_xgb[3][i], pred_xgb[4][i], pred_xgb[5][i] ] for i in range( len( pred_xgb[5] ) )  ] )
-        count, pred_rev, true_rev = get_predictions( truth, prediction_xgb )
-        counts_xgb.append( count )
-        pred_revs_xgb.append( pred_rev )
-        true_revs_xgb.append( true_rev )
-#        xgb.plot_importance(xgb_r)
-#        plt.figure(figsize = (16, 12))
-#        plt.show()
+        scaled_prediction_xgb = np.ndarray.copy(prediction_xgb)
 
-    for i in range( k ):
-        print( 'Out of top {}, {} are nonzero'.format(targeteds[i], counts[i]) )
-        print( 'Out of top {}, {} are nonzero from xgb'.format(targeteds[i], counts_xgb[i]) )
-        print( 'Pred revenue is {} truth value is {}'.format( pred_revs[i], true_revs[i] ) )
-        print( 'Pred revenue is {} truth value is {} using xgb'.format( pred_revs_xgb[i], true_revs_xgb[i] ) )
-    print( 'SUM: Pred revenue is {} truth value is {}'.format( sum( pred_revs ), sum( true_revs ) ) )
-    print( 'SUM: Pred revenue is {} truth value is {} using xgb'.format( sum( pred_revs_xgb), sum( true_revs_xgb ) ) )
+        scaled_prediction_xgb[3] = scaled_prediction_xgb[3] * MF_std + MF_mean
+        scaled_prediction_xgb[4] = scaled_prediction_xgb[4] * CC_std + CC_mean
+        scaled_prediction_xgb[5] = scaled_prediction_xgb[5] * CL_std + CL_mean
+
+        count1, pred_rev1, true_rev1 = get_predictions( scaled_truth, scaled_prediction_xgb, 1 )
+        count2, pred_rev2, true_rev2 = get_predictions( scaled_truth, scaled_prediction_xgb, 2 )
+        count3, pred_rev3, true_rev3 = get_predictions( scaled_truth, scaled_prediction_xgb, 3 )
+        count4, pred_rev4, true_rev4 = get_predictions( scaled_truth, scaled_prediction_xgb, 4 )
+        count5, pred_rev5, true_rev5 = get_predictions( scaled_truth, scaled_prediction_xgb, 5 )
+
+        counts_xgb.append( [ count1, count2, count3, count4, count5]  )
+        pred_revs_xgb.append( [ pred_rev1, pred_rev2, pred_rev3, pred_rev4, pred_rev5]  )
+        true_revs_xgb.append( [ true_rev1, true_rev2, true_rev3, true_rev4, true_rev5]  )
+
+        # I will train logistic regression with SGDClassifier and some simple linear regression for revenues 
+
+        train_labels_class1 = train_set_labels_fold[:,0]
+        train_labels_class2 = train_set_labels_fold[:,1]
+        train_labels_class3 = train_set_labels_fold[:,2]
+
+        train_labels_reg1 = train_set_labels_fold[:,3]
+        train_labels_reg2 = train_set_labels_fold[:,4]
+        train_labels_reg3 = train_set_labels_fold[:,5]
+
+        # Here I chose the features that had highest importance in xgb
+        train_set_fold1 = train_set_fold[ :, ( 1, 2, 5, 9, 11, 16, 22, 25, 27 ) ]
+        train_set_fold2 = train_set_fold[ :, ( 1, 2, 9, 10, 19, 22, 23, 26, 27 ) ]
+        train_set_fold3 = train_set_fold[ :, ( 1, 2, 9, 15, 16, 17, 18, 19, 21, 22 ) ]
+
+        val_set1 = val_set_tr[ :, ( 1, 2, 5, 9, 11, 16, 22, 25, 27 ) ]
+        val_set2 = val_set_tr[ :, ( 1, 2, 9, 10, 19, 22, 23, 26, 27 ) ]
+        val_set3 = val_set_tr[ :, ( 1, 2, 9, 15, 16, 17, 18, 19, 21, 22 ) ]
+
+        sgd_class1 = SGDClassifier( random_state=42, loss='log' )
+        sgd_class2 = SGDClassifier( random_state=42, loss='log' )
+        sgd_class3 = SGDClassifier( random_state=42, loss='log' )
+
+        sgd_class1.fit( train_set_fold1, train_labels_class1 ) 
+        sgd_class2.fit( train_set_fold2, train_labels_class2 )
+        sgd_class3.fit( train_set_fold3, train_labels_class3 )
+
+        sgd_pred_class1 = sgd_class1.decision_function( val_set1 ) 
+        sgd_pred_class2 = sgd_class2.decision_function( val_set2 )
+        sgd_pred_class3 = sgd_class3.decision_function( val_set3 )
+
+        lin_reg1 = LinearRegression( )
+        lin_reg2 = LinearRegression( )
+        lin_reg3 = LinearRegression( )
+
+        lin_reg1.fit( train_set_fold1, train_labels_reg1 ) 
+        lin_reg2.fit( train_set_fold2, train_labels_reg2 )
+        lin_reg3.fit( train_set_fold3, train_labels_reg3 )
+
+        sgd_pred_reg1 = lin_reg1.predict( val_set1 ) 
+        sgd_pred_reg2 = lin_reg2.predict( val_set2 )
+        sgd_pred_reg3 = lin_reg3.predict( val_set3 )
+        prediction_classic = np.array( [ [ sgd_pred_class1[i], 
+                                           sgd_pred_class2[i], 
+                                           sgd_pred_class3[i], 
+                                           sgd_pred_reg1[i], 
+                                           sgd_pred_reg2[i], 
+                                           sgd_pred_reg3[i] ] for i in range( len( sgd_pred_reg1 ) )  ] )
+        scaled_prediction_classic = np.ndarray.copy(prediction_classic)
+
+        scaled_prediction_classic[3] = scaled_prediction_classic[3] * MF_std + MF_mean
+        scaled_prediction_classic[4] = scaled_prediction_classic[4] * CC_std + CC_mean
+        scaled_prediction_classic[5] = scaled_prediction_classic[5] * CL_std + CL_mean
+
+        count_cla1, pred_rev_cla1, true_rev_cla1 = get_predictions( scaled_truth, scaled_prediction_classic, 1 )
+        count_cla2, pred_rev_cla2, true_rev_cla2 = get_predictions( scaled_truth, scaled_prediction_classic, 2 )
+        count_cla3, pred_rev_cla3, true_rev_cla3 = get_predictions( scaled_truth, scaled_prediction_classic, 3 )
+        count_cla4, pred_rev_cla4, true_rev_cla4 = get_predictions( scaled_truth, scaled_prediction_classic, 4 )
+        count_cla5, pred_rev_cla5, true_rev_cla5 = get_predictions( scaled_truth, scaled_prediction_classic, 5 )
+
+        counts_classic.append( [ count_cla1, count_cla2, count_cla3, count_cla4, count_cla5]  )
+        pred_revs_classic.append( [ pred_rev_cla1, pred_rev_cla2, pred_rev_cla3, pred_rev_cla4, pred_rev_cla5]  )
+        true_revs_classic.append( [ true_rev_cla1, true_rev_cla2, true_rev_cla3, true_rev_cla4, true_rev_cla5]  )
+        #lin_reg.fit( train_set_tr, train_set_labels_arr)
+    #    lin_pred = lin_reg.predict( val_set_tr )
+    #    print( lin_pred )
+    #    print( val_set_labels_arr.flatten() )
+    #    lin_rmse = np.sqrt(MSE( val_set_labels_arr, lin_pred))
+    #    print( 'Lin reg val set error: ', lin_rmse )
+    #
+    #    lin_train_pred = lin_reg.predict( train_set_tr )
+    #    lin_train_rmse = np.sqrt(MSE( train_set_labels_arr, lin_train_pred))
+    #    print( 'Lin reg train set error: ', lin_train_rmse )
+
+#######################################################
+#    I summarize the results here
+#######################################################
+
+    collected_results = np.concatenate( ( np.array( targeteds ), 
+                                          np.array( counts ),    np.array( counts_xgb ),     np.array( counts_classic ), 
+                                          np.array( true_revs ), np.array( true_revs_xgb ),  np.array( true_revs_classic ), 
+                                          np.array( pred_revs ), np.array( pred_revs_xgb ),  np.array( pred_revs_classic )
+                                          ), axis=1 )
+    results_df = pd.DataFrame( collected_results, columns=[ 'targeted', 'NN_1',      'NN_2',      'NN_3',      'NN_4',      'NN_5',
+                                                                        'xgb_1',     'xgb_2',     'xgb_3',     'xgb_4',     'xgb_5',
+                                                                        'cls_1',     'cls_2',     'cls_3',     'cls_4',     'cls_5',
+                                                                        'NN_true1',  'NN_true2',  'NN_true3',  'NN_true4',  'NN_true5',
+                                                                        'xgb_true1', 'xgb_true2', 'xgb_true3', 'xgb_true4', 'xgb_true5',
+                                                                        'cls_true1', 'cls_true2', 'cls_true3', 'cls_true4', 'cls_true5',
+                                                                        'NN_pred1',  'NN_pred2',  'NN_pred3',  'NN_pred4',  'NN_pred5',
+                                                                        'xgb_pred1', 'xgb_pred2', 'xgb_pred3', 'xgb_pred4', 'xgb_pred5',
+                                                                        'cls_pred1', 'cls_pred2', 'cls_pred3', 'cls_pred4', 'cls_pred5'] )
+    results_df.loc['mean'] = results_df.mean()
+    results_df.loc['std'] = results_df.std()
+    results_df.loc['sum'] = results_df.sum()
+    results_df = results_df.round(2)
+    results_df.to_csv( "results_NN_XGB.csv", index=True )
+
+
+#    print_results( k, targeteds, counts1, counts_xgb1, pred_revs1, true_revs1, pred_revs_xgb1, true_revs_xgb1, 
+#                                counts2, counts_xgb2, pred_revs2, true_revs2, pred_revs_xgb2, true_revs_xgb2, 
+#                                counts3, counts_xgb3, pred_revs3, true_revs3, pred_revs_xgb3, true_revs_xgb3, 
+#                                counts4, counts_xgb4, pred_revs4, true_revs4, pred_revs_xgb4, true_revs_xgb4, 
+#                                counts5, counts_xgb5, pred_revs5, true_revs5, pred_revs_xgb5, true_revs_xgb5, )
+#    for i in range( k ):
+#        print( 'Out of top {}, {} are nonzero'.format( targeteds[i], counts1[i]) )
+#        print( 'Out of top {}, {} are nonzero from xgb'.format( targeteds[i], counts_xgb1[i]) )
+#        print( 'Pred revenue is {} truth value is {}'.format( pred_revs1[i], true_revs1[i] ) )
+#        print( 'Pred revenue is {} truth value is {} using xgb'.format( pred_revs_xgb1[i], true_revs_xgb1[i] ) )
+#    print( 'SUM: Pred revenue is {} truth value is {}'.format( sum( pred_revs1 ), sum( true_revs1 ) ) )
+#    print( 'SUM: Pred revenue is {} truth value is {} using xgb'.format( sum( pred_revs_xgb1), sum( true_revs_xgb1 ) ) )
+#    print( '\n\n' )
+#    for i in range( k ):
+#        print( 'Out of top {}, {} are nonzero'.format( targeteds[i], counts2[i]) )
+#        print( 'Out of top {}, {} are nonzero from xgb'.format( targeteds[i], counts_xgb2[i]) )
+#        print( 'Pred revenue is {} truth value is {}'.format( pred_revs2[i], true_revs2[i] ) )
+#        print( 'Pred revenue is {} truth value is {} using xgb'.format( pred_revs_xgb2[i], true_revs_xgb2[i] ) )
+#    print( 'SUM: Pred revenue is {} truth value is {}'.format( sum( pred_revs2 ), sum( true_revs2 ) ) )
+#    print( 'SUM: Pred revenue is {} truth value is {} using xgb'.format( sum( pred_revs_xgb2), sum( true_revs_xgb2 ) ) )
+#    print( '\n\n' )
+#    for i in range( k ):
+#        print( 'Out of top {}, {} are nonzero'.format( targeteds[i], counts3[i]) )
+#        print( 'Out of top {}, {} are nonzero from xgb'.format( targeteds[i], counts_xgb3[i]) )
+#        print( 'Pred revenue is {} truth value is {}'.format( pred_revs3[i], true_revs3[i] ) )
+#        print( 'Pred revenue is {} truth value is {} using xgb'.format( pred_revs_xgb3[i], true_revs_xgb3[i] ) )
+#    print( 'SUM: Pred revenue is {} truth value is {}'.format( sum( pred_revs3 ), sum( true_revs3 ) ) )
+#    print( 'SUM: Pred revenue is {} truth value is {} using xgb'.format( sum( pred_revs_xgb3), sum( true_revs_xgb3 ) ) )
 
 #            epochs = range(1, len(train_loss) + 1)
 #            plt.plot(epochs, train_loss, 'b', label = 'training loss')
