@@ -68,7 +68,7 @@ def get_predictions( truth, prediction, option = 1 ):
 
 def get_predictions_IDs( IDs, prediction, option = 1 ):
 
-    label_pred = [ ( list(l), list(p) ) for l, p in zip( IDs, prediction ) ]
+    label_pred = [ ( l, list(p) ) for l, p in zip( IDs, prediction ) ]
     if option == 1:
         label_pred = sorted( label_pred, key = sort_key_rev, reverse = True )
     elif option == 2:
@@ -85,6 +85,7 @@ def get_predictions_IDs( IDs, prediction, option = 1 ):
     targeted = int( len(label_pred) * 0.15 )
     targets = []
     method = []
+    pred_rev = []
     for ID, pred_list in label_pred[:targeted]:
         if option == 1:
             index, value = max(enumerate(pred_list [3:] ), key=operator.itemgetter(1))
@@ -101,10 +102,25 @@ def get_predictions_IDs( IDs, prediction, option = 1 ):
             index, value = max(enumerate(pred_list [3:6] ), key=operator.itemgetter(1))
         targets.append( ID )
         method.append( index )
-
-        pred_rev += pred_list[ index + 3 ]
+        pred_rev.append( pred_list[ index + 3 ])
     return targets, method, pred_rev
 
+
+def tex_table( df, labels, name, caption ):
+    f = open( name, "w" )
+    f.write("   \\begin{table}[h] \n") 
+    f.write("   \\centering \n") 
+    f.write("   \\caption{ ")
+    f.write( caption )
+    f.write("} \n")
+    f.write("      \\begin{tabular}{c|c|c|c|c|c}\n" )
+    f.write("        fold & m1 & m2 & m3 & m4 & m5 \\\\ \n" )
+    for i in range(df.shape[0]):
+        f.write( "        {} & {} & {} & {} & {} & {}  \\\\ \n".format( df.index[i], df[ labels[0] ].iloc[i], df[ labels[1] ].iloc[i], df[ labels[2] ].iloc[i], df[ labels[3] ].iloc[i], df[ labels[4] ].iloc[i] ) )
+    f.write("      \\end{tabular} \n" )
+    f.write("   \\end{table} \n")
+
+    f.close()
 
 
 

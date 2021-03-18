@@ -79,7 +79,7 @@ if __name__ == '__main__' :
                         Line2D( [0], [0], marker = 'o', color = 'none', markeredgecolor = 'none', markerfacecolor= 'fuchsia',     markersize = 7, label = 'MFCL'),
                         Line2D( [0], [0], marker = 'o', color = 'none', markeredgecolor = 'none', markerfacecolor= 'turquoise',   markersize = 7, label = 'CCCL'),
                         Line2D( [0], [0], marker = 'o', color = 'none', markeredgecolor = 'none', markerfacecolor= 'gold',        markersize = 7, label = 'all'),
-                        Line2D( [0], [0], marker = 'o', color = 'none', markeredgecolor = 'none', markerfacecolor= 'black',       markersize = 7, label = 'none'),
+                        Line2D( [0], [0], marker = 'o', color = 'none', markeredgecolor = 'none', markerfacecolor= 'black',       markersize = 7, label = 'none')
                       ]
     legend_elementsMF = [ Line2D( [0], [0], marker = 'o', color = 'none', markeredgecolor = 'none', markerfacecolor= 'forestgreen',         markersize = 7, label = 'MF'),
                           Line2D( [0], [0], marker = 'o', color = 'none', markeredgecolor = 'none', markerfacecolor= 'royalblue',        markersize = 7, label = 'none')]
@@ -87,8 +87,9 @@ if __name__ == '__main__' :
                           Line2D( [0], [0], marker = 'o', color = 'none', markeredgecolor = 'none', markerfacecolor= 'royalblue',        markersize = 7, label = 'none')]
     legend_elementsCC = [ Line2D( [0], [0], marker = 'o', color = 'none', markeredgecolor = 'none', markerfacecolor= 'forestgreen',         markersize = 7, label = 'CC'),
                           Line2D( [0], [0], marker = 'o', color = 'none', markeredgecolor = 'none', markerfacecolor= 'royalblue',        markersize = 7, label = 'none')]
+                          
     for i in col_names:
-        if 'weight' in i or 'color' in i or 'Sale' in i :#or 'Revenue' in i:
+        if 'weight' in i or 'color' in i or 'Sale' in i or 'Revenue' in i:
             continue
         print(i)
         plt.hist( [ data.loc[data[ "Sale_MF" ]==0][i],
@@ -113,9 +114,10 @@ if __name__ == '__main__' :
         ax2.set_xlabel( i )
         ax2.set_ylabel( 'ratio' )
         ax1.set_ylabel( 'client count' )
-        ax2.bar( bins[:-1],    
-                 ns[1] / (ns[0]+1), 
-                 alpha=0.9 )
+        ns[0][ ns[0]==0 ]=1.
+        to_plot =ns[1]/ns[0]
+        ax2.plot(bins[:-1],
+                 to_plot)
         plt.legend( handles=legend_elementsMF, loc='upper center', bbox_to_anchor=( 0.9, 2.1))
         plt.savefig( 'plots/MF_hist/'+i+'ratio.pdf' )
         plt.savefig( 'plots/MF_hist/'+i+'ratio.png' )
@@ -123,6 +125,7 @@ if __name__ == '__main__' :
         plt.savefig( 'plots/MF_hist/'+i+'ratio_log.pdf' )
         plt.savefig( 'plots/MF_hist/'+i+'ratio_log.png' )
         plt.close()
+
 
     for i in col_names:
         if 'weight' in i or 'color' in i or 'Sale' in i or 'Revenue' in i:
@@ -135,6 +138,7 @@ if __name__ == '__main__' :
         plt.xlabel( i )
         plt.ylabel( 'Client count' )
         plt.legend( handles=legend_elementsCC, loc='upper center', bbox_to_anchor=( 0.9, 0.98))
+        plt.yscale('linear')
         plt.savefig( 'plots/CC_hist/'+i+'.pdf' )
         plt.savefig( 'plots/CC_hist/'+i+'.png' )
         plt.yscale('log')
@@ -149,9 +153,10 @@ if __name__ == '__main__' :
         ax2.set_xlabel( i )
         ax2.set_ylabel( 'ratio' )
         ax1.set_ylabel( 'client count' )
-        ax2.bar( bins[:-1],    
-                 ns[1] / (ns[0]+1), 
-                 alpha=0.9 )
+        ns[0][ ns[0]==0 ]=1.
+        to_plot =ns[1]/ns[0]
+        ax2.plot(bins[:-1],
+                 to_plot)
         plt.legend( handles=legend_elementsCC, loc='upper center', bbox_to_anchor=( 0.9, 2.1))
         plt.savefig( 'plots/CC_hist/'+i+'ratio.pdf' )
         plt.savefig( 'plots/CC_hist/'+i+'ratio.png' )
@@ -172,6 +177,7 @@ if __name__ == '__main__' :
         plt.xlabel( i )
         plt.ylabel( 'Client count' )
         plt.legend( handles=legend_elementsCL, loc='upper center', bbox_to_anchor=( 0.9, 0.98))
+        plt.yscale('linear')
         plt.savefig( 'plots/CL_hist/'+i+'.pdf' )
         plt.savefig( 'plots/CL_hist/'+i+'.png' )
         plt.yscale('log')
@@ -186,9 +192,10 @@ if __name__ == '__main__' :
         ax2.set_xlabel( i )
         ax2.set_ylabel( 'ratio' )
         ax1.set_ylabel( 'client count' )
-        ax2.bar( bins[:-1],    
-                 ns[1] / (ns[0]+1), 
-                 alpha=0.9 )
+        ns[0][ ns[0]==0 ]=1.
+        to_plot =ns[1]/ns[0]
+        ax2.plot(bins[:-1],
+                 to_plot)
         plt.legend( handles=legend_elementsCL, loc='upper center', bbox_to_anchor=( 0.9, 2.1))
         plt.savefig( 'plots/CL_hist/'+i+'ratio.pdf' )
         plt.savefig( 'plots/CL_hist/'+i+'ratio.png' )

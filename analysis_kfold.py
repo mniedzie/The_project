@@ -39,30 +39,31 @@ if __name__ == '__main__' :
     data_predict = data[data['Sale_MF'].isna()]
     data = data[data['Sale_MF'].notna()]
 
-    # will use this feature for stratification
-    data[ 'Revenue_max' ] = data[ [ 'Revenue_MF',  'Revenue_CC',  'Revenue_CL' ] ].max( axis = 1 )
-    data[ 'Revenue_max' ] = pd.cut( data[ 'Revenue_max' ],
-                                    bins = [-0.1, 10., 20., 45., 100., 500.],
-                                    labels = [ 1, 2, 3, 4, 5 ])
-
-    # split the data while maintaining the max revenue shape
-    split = StratifiedShuffleSplit(n_splits=1, test_size=0.2)#, random_state=42)
-    for train_ix, test_ix in split.split( data, data[ 'Revenue_max' ] ):
-        train_set = data.iloc[ train_ix ]
-        test_set  = data.iloc[ test_ix ]
-    data = data.drop( 'Revenue_max', axis = 1 )
-    train_set = train_set.drop( 'Revenue_max', axis = 1 )
-    test_set  = test_set .drop( 'Revenue_max', axis = 1 )
-#    train_set, test_set = train_test_split( data, test_size=0.2, random_state=42)
+#    # will use this feature for stratification
+#    data[ 'Revenue_max' ] = data[ [ 'Revenue_MF',  'Revenue_CC',  'Revenue_CL' ] ].max( axis = 1 )
+#    data[ 'Revenue_max' ] = pd.cut( data[ 'Revenue_max' ],
+#                                    bins = [-0.1, 10., 20., 45., 100., 500.],
+#                                    labels = [ 1, 2, 3, 4, 5 ])
+#
+#    # split the data while maintaining the max revenue shape
+#    split = StratifiedShuffleSplit(n_splits=1, test_size=0.2)#, random_state=42)
+#    for train_ix, test_ix in split.split( data, data[ 'Revenue_max' ] ):
+#        train_set = data.iloc[ train_ix ]
+#        test_set  = data.iloc[ test_ix ]
+#    data = data.drop( 'Revenue_max', axis = 1 )
+#    train_set = train_set.drop( 'Revenue_max', axis = 1 )
+#    test_set  = test_set .drop( 'Revenue_max', axis = 1 )
+##    train_set, test_set = train_test_split( data, test_size=0.2, random_state=42)
+    train_set = data.copy( deep=True )
     
     # separate labels and features
     label_names = [ 'Sale_MF',  'Sale_CC',  'Sale_CL',  'Revenue_MF',  'Revenue_CC',  'Revenue_CL' ]
     #label_names = [ 'Revenue_MF' ]
 
-    test_set_labels  =  test_set[ label_names ]
+#    test_set_labels  =  test_set[ label_names ]
     train_set_labels = train_set[ label_names ]
 
-    test_set  = test_set.drop( [ 'Client', 'Sale_MF',  'Sale_CC',  'Sale_CL',  'Revenue_MF',  'Revenue_CC',  'Revenue_CL' ], axis = 1 )
+#    test_set  = test_set.drop( [ 'Client', 'Sale_MF',  'Sale_CC',  'Sale_CL',  'Revenue_MF',  'Revenue_CC',  'Revenue_CL' ], axis = 1 )
     train_set = train_set.drop( [ 'Client', 'Sale_MF',  'Sale_CC',  'Sale_CL',  'Revenue_MF',  'Revenue_CC',  'Revenue_CL' ], axis = 1 )
 
     # I standardize campaign revenues by hand 
@@ -77,9 +78,9 @@ if __name__ == '__main__' :
     train_set_labels[ 'Revenue_CC' ] = ( train_set_labels[ 'Revenue_CC' ] - CC_mean ) / CC_std
     train_set_labels[ 'Revenue_CL' ] = ( train_set_labels[ 'Revenue_CL' ] - CL_mean ) / CL_std
 
-    test_set_labels[ 'Revenue_MF' ] = ( test_set_labels[ 'Revenue_MF' ] - MF_mean ) / MF_std
-    test_set_labels[ 'Revenue_CC' ] = ( test_set_labels[ 'Revenue_CC' ] - CC_mean ) / CC_std
-    test_set_labels[ 'Revenue_CL' ] = ( test_set_labels[ 'Revenue_CL' ] - CL_mean ) / CL_std
+#    test_set_labels[ 'Revenue_MF' ] = ( test_set_labels[ 'Revenue_MF' ] - MF_mean ) / MF_std
+#    test_set_labels[ 'Revenue_CC' ] = ( test_set_labels[ 'Revenue_CC' ] - CC_mean ) / CC_std
+#    test_set_labels[ 'Revenue_CL' ] = ( test_set_labels[ 'Revenue_CL' ] - CL_mean ) / CL_std
 
     # process input features through the pipelines
     num_pipeline = Pipeline([ ( 'att_mod', CustomOperations() ),
@@ -92,26 +93,27 @@ if __name__ == '__main__' :
     ])
 
     train_set_tr = full_pipe.fit_transform( train_set )
-    test_set_tr = full_pipe.transform( test_set )
+#    test_set_tr = full_pipe.transform( test_set )
 
 
 #    train_set_tr, val_set_tr, train_set_labels, val_set_labels = train_test_split( train_set_tr, train_set_labels, test_size=0.2, random_state=42)
 #
     train_set_labels_arr = train_set_labels.to_numpy()
-    test_set_labels_arr = test_set_labels.to_numpy()
+#    test_set_labels_arr = test_set_labels.to_numpy()
 #    val_set_labels_arr = val_set_labels.to_numpy()
 
     # I have all the data processed, I can start analysing it. 
 
     k = 5
     num_samples = len(train_set_tr) // k
-    trainings = 10
+    trainings = 20
     nepochs = 300
 
     counts = []       
     pred_revs = []    
     true_revs = []    
     targeteds = []   
+    target = 0
                       
     counts_xgb = []   
     pred_revs_xgb = []
@@ -125,7 +127,7 @@ if __name__ == '__main__' :
     for i in range(k):
         if k == 1:
             print(' One fold chosen, will use random split with 20% validation ')
-            train_set_fold, val_set_tr, train_set_labels_fold, val_set_labels = train_test_split( train_set_tr, train_set_labels, test_size=0.2, random_state=42)
+            train_set_fold, val_set_tr, train_set_labels_fold, val_set_labels = train_test_split( train_set_tr, train_set_labels_arr, test_size=0.2, random_state=42)
         else:
             print(' Using k-fold sen, currently in fold {} '.format(i+1) )
             val_set_tr     = train_set_tr[ i * num_samples: (i + 1) * num_samples ]
@@ -138,8 +140,8 @@ if __name__ == '__main__' :
             )
 
             train_set_labels_fold = np.concatenate(
-              [ train_set_labels[ : i * num_samples],
-                train_set_labels[ (i + 1) * num_samples : ] ],
+              [ train_set_labels_arr[ : i * num_samples],
+                train_set_labels_arr[ (i + 1) * num_samples : ] ],
                 axis = 0
             )
 
@@ -215,6 +217,7 @@ if __name__ == '__main__' :
         true_revs.append( [ true_rev1, true_rev2, true_rev3, true_rev4, true_rev5]  )
 
         targeteds.append( [int( len(prediction) * 0.15 )] )
+        target = int( len(prediction) * 0.15 )
         # I train bdts for classification and regression
 
         train_labels_xgb = []
@@ -361,12 +364,54 @@ if __name__ == '__main__' :
                                                                         'NN_pred1',  'NN_pred2',  'NN_pred3',  'NN_pred4',  'NN_pred5',
                                                                         'xgb_pred1', 'xgb_pred2', 'xgb_pred3', 'xgb_pred4', 'xgb_pred5',
                                                                         'cls_pred1', 'cls_pred2', 'cls_pred3', 'cls_pred4', 'cls_pred5'] )
+    results_df[ 'NN_acc1' ]  = ( results_df[ 'NN_true1' ] - results_df[ 'NN_pred1' ]).abs() / results_df[ 'NN_true1' ]
+    results_df[ 'NN_acc2' ]  = ( results_df[ 'NN_true2' ] - results_df[ 'NN_pred2' ]).abs() / results_df[ 'NN_true2' ]
+    results_df[ 'NN_acc3' ]  = ( results_df[ 'NN_true3' ] - results_df[ 'NN_pred3' ]).abs() / results_df[ 'NN_true3' ]
+    results_df[ 'NN_acc4' ]  = ( results_df[ 'NN_true4' ] - results_df[ 'NN_pred4' ]).abs() / results_df[ 'NN_true4' ]
+    results_df[ 'NN_acc5' ]  = ( results_df[ 'NN_true5' ] - results_df[ 'NN_pred5' ]).abs() / results_df[ 'NN_true5' ]
+    results_df[ 'xgb_acc1' ] = ( results_df[ 'xgb_true1' ] - results_df[ 'xgb_pred1' ]).abs() / results_df[ 'xgb_true1' ]
+    results_df[ 'xgb_acc2' ] = ( results_df[ 'xgb_true2' ] - results_df[ 'xgb_pred2' ]).abs() / results_df[ 'xgb_true2' ]
+    results_df[ 'xgb_acc3' ] = ( results_df[ 'xgb_true3' ] - results_df[ 'xgb_pred3' ]).abs() / results_df[ 'xgb_true3' ]
+    results_df[ 'xgb_acc4' ] = ( results_df[ 'xgb_true4' ] - results_df[ 'xgb_pred4' ]).abs() / results_df[ 'xgb_true4' ]
+    results_df[ 'xgb_acc5' ] = ( results_df[ 'xgb_true5' ] - results_df[ 'xgb_pred5' ]).abs() / results_df[ 'xgb_true5' ]
+    results_df[ 'cls_acc1' ] = ( results_df[ 'cls_true1' ] - results_df[ 'cls_pred1' ]).abs() / results_df[ 'cls_true1' ]
+    results_df[ 'cls_acc2' ] = ( results_df[ 'cls_true2' ] - results_df[ 'cls_pred2' ]).abs() / results_df[ 'cls_true2' ]
+    results_df[ 'cls_acc3' ] = ( results_df[ 'cls_true3' ] - results_df[ 'cls_pred3' ]).abs() / results_df[ 'cls_true3' ]
+    results_df[ 'cls_acc4' ] = ( results_df[ 'cls_true4' ] - results_df[ 'cls_pred4' ]).abs() / results_df[ 'cls_true4' ]
+    results_df[ 'cls_acc5' ] = ( results_df[ 'cls_true5' ] - results_df[ 'cls_pred5' ]).abs() / results_df[ 'cls_true5' ]
     results_df.loc['mean'] = results_df.mean()
     results_df.loc['std'] = results_df.std()
     results_df.loc['sum'] = results_df.sum()
     results_df = results_df.round(2)
     results_df.to_csv( "results_NN_XGB.csv", index=True )
 
+    tex_table( results_df, ['NN_1',      'NN_2',      'NN_3',      'NN_4',      'NN_5'], "report/tables/NN_counts.tex",
+                            "Clients who bought the marketed product, results from NN using sort and selection methods 1-5. {} clients targeted.".format( target ) )
+    tex_table( results_df, ['xgb_1',      'xgb_2',      'xgb_3',      'xgb_4',      'xgb_5'], "report/tables/xgb_counts.tex",
+                            "Clients who bought the marketed product, results from XGBoost using sort and selection methods 1-5. {} clients targeted.".format( target ) )
+    tex_table( results_df, ['cls_1',      'cls_2',      'cls_3',      'cls_4',      'cls_5'], "report/tables/cls_counts.tex",
+                            "Clients who bought the marketed product, results from cls using sort and selection methods 1-5. {} clients targeted.".format( target ) )
+
+    tex_table( results_df, ['NN_true1',      'NN_true2',      'NN_true3',      'NN_true4',      'NN_true5'], "report/tables/NN_trueRev.tex",
+                        "True revenue achieved, results from NN using sort and selection methods 1-5. " )
+    tex_table( results_df, ['xgb_true1',      'xgb_true2',      'xgb_true3',      'xgb_true4',      'xgb_true5'], "report/tables/xgb_trueRev.tex",
+                        "True revenue achieved, results from XGBoost using sort and selection methods 1-5. " )
+    tex_table( results_df, ['cls_true1',      'cls_true2',      'cls_true3',      'cls_true4',      'cls_true5'], "report/tables/cls_trueRev.tex",
+                        "True revenue achieved, results from SGDclassification and LinRegression using sort and selection methods 1-5. " )
+
+    tex_table( results_df, ['NN_pred1',      'NN_pred2',      'NN_pred3',      'NN_pred4',      'NN_pred5'], "report/tables/NN_predRev.tex",
+                        "Predicted revenue achieved, results from NN using sort and selection methods 1-5. " )
+    tex_table( results_df, ['xgb_pred1',      'xgb_pred2',      'xgb_pred3',      'xgb_pred4',      'xgb_pred5'], "report/tables/xgb_predRev.tex",
+                        "Predicted revenue achieved, results from XGBboost using sort and selection methods 1-5. " )
+    tex_table( results_df, ['cls_pred1',      'cls_pred2',      'cls_pred3',      'cls_pred4',      'cls_pred5'], "report/tables/cls_predRev.tex",
+                        "Predicted revenue achieved, results from SGDclassification and LinRegression using sort and selection methods 1-5. " )
+
+    tex_table( results_df, ['NN_acc1',      'NN_acc2',      'NN_acc3',      'NN_acc4',      'NN_acc5'], "report/tables/NN_accRev.tex",
+                        "Revenue misprediction relative to true value (t-p)/t, results from NN using sort and selection methods 1-5. " )
+    tex_table( results_df, ['xgb_acc1',      'xgb_acc2',      'xgb_acc3',      'xgb_acc4',      'xgb_acc5'], "report/tables/xgb_accRev.tex",
+                        "Revenue misprediction relative to true value (t-p)/t, results from XGBoost using sort and selection methods 1-5. " )
+    tex_table( results_df, ['cls_acc1',      'cls_acc2',      'cls_acc3',      'cls_acc4',      'cls_acc5'], "report/tables/cls_accRev.tex",
+                        "Revenue misprediction relative to true value (t-p)/t, results from SGDclassification and LinRegression using sort and selection methods 1-5. " )
 
 #    print_results( k, targeteds, counts1, counts_xgb1, pred_revs1, true_revs1, pred_revs_xgb1, true_revs_xgb1, 
 #                                counts2, counts_xgb2, pred_revs2, true_revs2, pred_revs_xgb2, true_revs_xgb2, 
