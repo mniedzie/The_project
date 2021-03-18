@@ -208,6 +208,24 @@ def set_color(row):
         color = 'red'
     return color
 
+def set_colorMF(row):
+    color = 'black'
+    if row[ 'Sale_MF' ] == 1:
+        color = 'fuchsia'
+    return color
+
+def set_colorCC(row):
+    color = 'black'
+    if row[ 'Sale_CC' ] == 1:
+        color = 'fuchsia'
+    return color
+
+def set_colorCL(row):
+    color = 'black'
+    if row[ 'Sale_CL' ] == 1:
+        color = 'fuchsia'
+    return color
+
 def set_weight(row):
     weight = 6
     if row[ 'Sale_MF' ] == 1 and row[ 'Sale_CC' ] == 1 and row[ 'Sale_CL' ] == 1:
@@ -225,5 +243,23 @@ def set_weight(row):
     elif row[ 'Sale_MF' ]:
         weight = row[ 'Revenue_MF' ]
     return weight
+
+def set_weightMF(row):
+    weight = 1
+    if row[ 'Sale_MF' ] == 1:
+        weight = row[ 'Revenue_MF' ]
+    return weight*5
+
+def set_weightCC(row):
+    weight = 1
+    if row[ 'Sale_CC' ] == 1:
+        weight = row[ 'Revenue_CC' ]
+    return weight*5
+
+def set_weightCL(row):
+    weight = 1
+    if row[ 'Sale_CL' ] == 1:
+        weight = row[ 'Revenue_CL' ]
+    return weight*5
 
 
