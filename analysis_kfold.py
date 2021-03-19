@@ -39,31 +39,37 @@ if __name__ == '__main__' :
     data_predict = data[data['Sale_MF'].isna()]
     data = data[data['Sale_MF'].notna()]
 
-#    # will use this feature for stratification
-#    data[ 'Revenue_max' ] = data[ [ 'Revenue_MF',  'Revenue_CC',  'Revenue_CL' ] ].max( axis = 1 )
-#    data[ 'Revenue_max' ] = pd.cut( data[ 'Revenue_max' ],
-#                                    bins = [-0.1, 10., 20., 45., 100., 500.],
-#                                    labels = [ 1, 2, 3, 4, 5 ])
-#
-#    # split the data while maintaining the max revenue shape
-#    split = StratifiedShuffleSplit(n_splits=1, test_size=0.2)#, random_state=42)
-#    for train_ix, test_ix in split.split( data, data[ 'Revenue_max' ] ):
-#        train_set = data.iloc[ train_ix ]
-#        test_set  = data.iloc[ test_ix ]
-#    data = data.drop( 'Revenue_max', axis = 1 )
-#    train_set = train_set.drop( 'Revenue_max', axis = 1 )
-#    test_set  = test_set .drop( 'Revenue_max', axis = 1 )
-##    train_set, test_set = train_test_split( data, test_size=0.2, random_state=42)
-    train_set = data.copy( deep=True )
+    # will use this feature for stratification
+    strat = 1
+    if strat == 1:
+        data[ 'Revenue_max' ] = data[ [ 'Revenue_MF',  'Revenue_CC',  'Revenue_CL' ] ].max( axis = 1 )
+        data[ 'Revenue_max' ] = pd.cut( data[ 'Revenue_max' ],
+                                        bins = [-0.1, 10., 20., 45., 100., 500.],
+                                        labels = [ 1, 2, 3, 4, 5 ])
+
+        # split the data while maintaining the max revenue shape
+        split = StratifiedShuffleSplit(n_splits=1, test_size=0.2)#, random_state=42)
+        for train_ix, test_ix in split.split( data, data[ 'Revenue_max' ] ):
+            train_set = data.iloc[ train_ix ]
+            test_set  = data.iloc[ test_ix ]
+        data = data.drop( 'Revenue_max', axis = 1 )
+        train_set = train_set.drop( 'Revenue_max', axis = 1 )
+        test_set  = test_set .drop( 'Revenue_max', axis = 1 )
+#    train_set, test_set = train_test_split( data, test_size=0.2, random_state=42)
+    if strat == 0:
+        train_set = data.copy( deep=True )
     
     # separate labels and features
     label_names = [ 'Sale_MF',  'Sale_CC',  'Sale_CL',  'Revenue_MF',  'Revenue_CC',  'Revenue_CL' ]
     #label_names = [ 'Revenue_MF' ]
 
-#    test_set_labels  =  test_set[ label_names ]
+    if strat == 1:
+        test_set_labels  =  test_set[ label_names ]
     train_set_labels = train_set[ label_names ]
 
-#    test_set  = test_set.drop( [ 'Client', 'Sale_MF',  'Sale_CC',  'Sale_CL',  'Revenue_MF',  'Revenue_CC',  'Revenue_CL' ], axis = 1 )
+ 
+    if strat == 1:
+       test_set  = test_set.drop( [ 'Client', 'Sale_MF',  'Sale_CC',  'Sale_CL',  'Revenue_MF',  'Revenue_CC',  'Revenue_CL' ], axis = 1 )
     train_set = train_set.drop( [ 'Client', 'Sale_MF',  'Sale_CC',  'Sale_CL',  'Revenue_MF',  'Revenue_CC',  'Revenue_CL' ], axis = 1 )
 
     # I standardize campaign revenues by hand 
@@ -78,9 +84,11 @@ if __name__ == '__main__' :
     train_set_labels[ 'Revenue_CC' ] = ( train_set_labels[ 'Revenue_CC' ] - CC_mean ) / CC_std
     train_set_labels[ 'Revenue_CL' ] = ( train_set_labels[ 'Revenue_CL' ] - CL_mean ) / CL_std
 
-#    test_set_labels[ 'Revenue_MF' ] = ( test_set_labels[ 'Revenue_MF' ] - MF_mean ) / MF_std
-#    test_set_labels[ 'Revenue_CC' ] = ( test_set_labels[ 'Revenue_CC' ] - CC_mean ) / CC_std
-#    test_set_labels[ 'Revenue_CL' ] = ( test_set_labels[ 'Revenue_CL' ] - CL_mean ) / CL_std
+ 
+    if strat == 1:
+       test_set_labels[ 'Revenue_MF' ] = ( test_set_labels[ 'Revenue_MF' ] - MF_mean ) / MF_std
+       test_set_labels[ 'Revenue_CC' ] = ( test_set_labels[ 'Revenue_CC' ] - CC_mean ) / CC_std
+       test_set_labels[ 'Revenue_CL' ] = ( test_set_labels[ 'Revenue_CL' ] - CL_mean ) / CL_std
 
     # process input features through the pipelines
     num_pipeline = Pipeline([ ( 'att_mod', CustomOperations() ),
@@ -93,13 +101,17 @@ if __name__ == '__main__' :
     ])
 
     train_set_tr = full_pipe.fit_transform( train_set )
-#    test_set_tr = full_pipe.transform( test_set )
+ 
+    if strat == 1:
+       test_set_tr = full_pipe.transform( test_set )
 
 
 #    train_set_tr, val_set_tr, train_set_labels, val_set_labels = train_test_split( train_set_tr, train_set_labels, test_size=0.2, random_state=42)
 #
     train_set_labels_arr = train_set_labels.to_numpy()
-#    test_set_labels_arr = test_set_labels.to_numpy()
+ 
+    if strat == 1:
+       test_set_labels_arr = test_set_labels.to_numpy()
 #    val_set_labels_arr = val_set_labels.to_numpy()
 
     # I have all the data processed, I can start analysing it. 
@@ -126,8 +138,14 @@ if __name__ == '__main__' :
 
     for i in range(k):
         if k == 1:
-            print(' One fold chosen, will use random split with 20% validation ')
+            print(' no fold chosen, will use whole train data and test on test ')
             train_set_fold, val_set_tr, train_set_labels_fold, val_set_labels = train_test_split( train_set_tr, train_set_labels_arr, test_size=0.2, random_state=42)
+            train_set_fold = train_set_tr
+            train_set_labels_fold = train_set_labels_arr
+            val_set_tr = test_set_tr
+            val_set_labels = test_set_labels_arr
+
+
         else:
             print(' Using k-fold sen, currently in fold {} '.format(i+1) )
             val_set_tr     = train_set_tr[ i * num_samples: (i + 1) * num_samples ]
@@ -179,9 +197,10 @@ if __name__ == '__main__' :
             )
 
             train_loss = training_history.history['loss']
-            val_loss = training_history.history['val_loss']
             train_losses.append( train_loss )
-            val_losses.append( val_loss )
+            if k != 1:
+                val_loss = training_history.history['val_loss']
+                val_losses.append( val_loss )
             
 
             class_prediction = model.predict( val_set_tr )[0]

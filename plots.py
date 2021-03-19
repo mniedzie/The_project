@@ -15,39 +15,22 @@ if __name__ == '__main__' :
     ToSetToZero = [ x for x in data.columns if 'Count' in x or 'ActBal' in x or 'Volume' in x or 'Transactions' in x ]
     data[ ToSetToZero ]=data[ ToSetToZero ].fillna(0)
     data = data[ data[ 'Age' ] > 17 ]
-    print( ++i, ' we have: ', data.shape[0])
-    data = data[ data[ 'Revenue_MF' ] < 150 ]
-    print( ++i, ' we have: ', data.shape[0])
-    data = data[ data[ 'Revenue_CC' ] < 150 ]
-    print( ++i, ' we have: ', data.shape[0])
-    data = data[ data[ 'Revenue_CL' ] < 50 ]
-    print( ++i, ' we have: ', data.shape[0])
+#    data = data[ data[ 'Revenue_MF' ] < 150 ]
+#    data = data[ data[ 'Revenue_CC' ] < 150 ]
+#    data = data[ data[ 'Revenue_CL' ] < 50 ]
     data = data[ data[ 'VolumeCred_CA' ] < 40000 ]
-    print( ++i, ' we have: ', data.shape[0])
     data = data[ data[ 'VolumeDeb_CA' ] < 30000 ]
-    print( ++i, ' we have: ', data.shape[0])
     data = data[ data[ 'VolumeDebCash_Card' ] < 5000 ]
-    print( ++i, ' we have: ', data.shape[0])
     data = data[ data[ 'VolumeDebCashless_Card' ] < 3000 ]
-    print( ++i, ' we have: ', data.shape[0])
     data = data[ data[ 'VolumeCred' ] < 40000 ]
-    print( ++i, ' we have: ', data.shape[0])
     data = data[ data[ 'VolumeDeb' ] < 32000 ]
-    print( ++i, ' we have: ', data.shape[0])
     data = data[ data[ 'VolumeDeb_PaymentOrder' ] < 20000 ]
-    print( ++i, ' we have: ', data.shape[0])
     data = data[ data[ 'ActBal_CA' ] < 40000 ]
-    print( ++i, ' we have: ', data.shape[0])
     data = data[ data[ 'ActBal_CC' ] < 1250 ]
-    print( ++i, ' we have: ', data.shape[0])
     data = data[ data[ 'ActBal_CL' ] < 15000 ]
-    print( ++i, ' we have: ', data.shape[0])
     data = data[ data[ 'ActBal_MF' ] < 100000 ]
-    print( ++i, ' we have: ', data.shape[0])
     data = data[ data[ 'ActBal_OVD' ] < 1000 ]
-    print( ++i, ' we have: ', data.shape[0])
     data = data[ data[ 'ActBal_SA' ] < 50000 ]
-    print( ++i, ' we have: ', data.shape[0])
     data = data.drop( 'Client', axis = 1 )
     ToSetToZero = [ x for x in data.columns if 'Count' in x or 'ActBal' in x or 'Volume' in x or 'Transactions' in x ]
     data[ ToSetToZero ]=data[ ToSetToZero ].fillna(0)
@@ -67,7 +50,7 @@ if __name__ == '__main__' :
     data = data.drop( 'Sex', axis = 1 )
     col_names = data.columns.values.tolist()
     pairs = [(a, b) for idx, a in enumerate(col_names) for b in col_names[idx + 1:] if 'Sale' not in a and 'Sale' not in b 
-                                                                                    and 'Revenue' not in a and 'Revenue' not in b 
+    #                                                                                and 'Revenue' not in a and 'Revenue' not in b 
                                                                                     and 'Sex' not in a and 'Sex' not in b 
                                                                                     and 'weight' not in a and 'weight' not in b 
                                                                                     and 'color' not in a and 'color' not in b  ]
@@ -89,7 +72,7 @@ if __name__ == '__main__' :
                           Line2D( [0], [0], marker = 'o', color = 'none', markeredgecolor = 'none', markerfacecolor= 'royalblue',        markersize = 7, label = 'none')]
                           
     for i in col_names:
-        if 'weight' in i or 'color' in i or 'Sale' in i or 'Revenue' in i:
+        if 'weight' in i or 'color' in i or 'Sale' in i:# or 'Revenue' in i:
             continue
         print(i)
         plt.hist( [ data.loc[data[ "Sale_MF" ]==0][i],
@@ -100,11 +83,11 @@ if __name__ == '__main__' :
         plt.ylabel( 'Client count' )
         plt.legend( handles=legend_elementsMF, loc='upper center', bbox_to_anchor=( 0.9, 0.98))
         plt.yscale('linear')
-        plt.savefig( 'plots/MF_hist/'+i+'.pdf' )
-        plt.savefig( 'plots/MF_hist/'+i+'.png' )
+#        plt.savefig( 'plots/MF_hist/'+i+'.pdf' )
+#        plt.savefig( 'plots/MF_hist/'+i+'.png' )
         plt.yscale('log')
-        plt.savefig( 'plots/MF_hist/'+i+'_log.pdf' )
-        plt.savefig( 'plots/MF_hist/'+i+'_log.png' )
+#        plt.savefig( 'plots/MF_hist/'+i+'_log.pdf' )
+#        plt.savefig( 'plots/MF_hist/'+i+'_log.png' )
         plt.close()
         fig, (ax1, ax2) = plt.subplots(nrows=2)
         ns, bins, patches = ax1.hist( [ data.loc[data[ "Sale_MF" ]==0][i],
@@ -128,7 +111,7 @@ if __name__ == '__main__' :
 
 
     for i in col_names:
-        if 'weight' in i or 'color' in i or 'Sale' in i or 'Revenue' in i:
+        if 'weight' in i or 'color' in i or 'Sale' in i :#or 'Revenue' in i:
             continue
         print(i)
         plt.hist( [ data.loc[data[ "Sale_CC" ]==0][i],
@@ -138,12 +121,12 @@ if __name__ == '__main__' :
         plt.xlabel( i )
         plt.ylabel( 'Client count' )
         plt.legend( handles=legend_elementsCC, loc='upper center', bbox_to_anchor=( 0.9, 0.98))
-        plt.yscale('linear')
-        plt.savefig( 'plots/CC_hist/'+i+'.pdf' )
-        plt.savefig( 'plots/CC_hist/'+i+'.png' )
-        plt.yscale('log')
-        plt.savefig( 'plots/CC_hist/'+i+'_log.pdf' )
-        plt.savefig( 'plots/CC_hist/'+i+'_log.png' )
+#        plt.yscale('linear')
+#        plt.savefig( 'plots/CC_hist/'+i+'.pdf' )
+#        plt.savefig( 'plots/CC_hist/'+i+'.png' )
+#        plt.yscale('log')
+#        plt.savefig( 'plots/CC_hist/'+i+'_log.pdf' )
+#        plt.savefig( 'plots/CC_hist/'+i+'_log.png' )
         plt.close()
         fig, (ax1, ax2) = plt.subplots(nrows=2)
         ns, bins, patches = ax1.hist( [ data.loc[data[ "Sale_CC" ]==0][i],
@@ -167,7 +150,7 @@ if __name__ == '__main__' :
 
 
     for i in col_names:
-        if 'weight' in i or 'color' in i or 'Sale' in i or 'Revenue' in i:
+        if 'weight' in i or 'color' in i or 'Sale' in i :#or 'Revenue' in i:
             continue
         print(i)
         plt.hist( [ data.loc[data[ "Sale_CL" ]==0][i],
@@ -177,12 +160,12 @@ if __name__ == '__main__' :
         plt.xlabel( i )
         plt.ylabel( 'Client count' )
         plt.legend( handles=legend_elementsCL, loc='upper center', bbox_to_anchor=( 0.9, 0.98))
-        plt.yscale('linear')
-        plt.savefig( 'plots/CL_hist/'+i+'.pdf' )
-        plt.savefig( 'plots/CL_hist/'+i+'.png' )
-        plt.yscale('log')
-        plt.savefig( 'plots/CL_hist/'+i+'_log.pdf' )
-        plt.savefig( 'plots/CL_hist/'+i+'_log.png' )
+#        plt.yscale('linear')
+#        plt.savefig( 'plots/CL_hist/'+i+'.pdf' )
+#        plt.savefig( 'plots/CL_hist/'+i+'.png' )
+#        plt.yscale('log')
+#        plt.savefig( 'plots/CL_hist/'+i+'_log.pdf' )
+#        plt.savefig( 'plots/CL_hist/'+i+'_log.png' )
         plt.close()
         fig, (ax1, ax2) = plt.subplots(nrows=2)
         ns, bins, patches = ax1.hist( [ data.loc[data[ "Sale_CL" ]==0][i],
@@ -206,76 +189,75 @@ if __name__ == '__main__' :
 
 
 
-    for a,b in pairs:
-        print( a, b )
-        plt.figure(figsize = (12, 9))
-        plt.scatter( x = data[ a ],
-                     y = data[ b ],
-                     c = data[ 'color' ],
-                     s = data[ 'weight' ],
-                     edgecolors='none',
-                     alpha = 0.5,
-                     )
-        plt.xlabel( a )
-        plt.ylabel( b )
-        plt.legend( handles=legend_elements, loc='upper center', bbox_to_anchor=( 1.025, 1.15))
-#        plt.show()
-        plt.savefig( 'plots/all_cats/'+a+'_'+b+'.pdf' )
-        plt.savefig( 'plots/all_cats/'+a+'_'+b+'.png' )
-        plt.close()
-        break
-
-
-    for a,b in pairs:
-        print( a, b )
-        plt.figure(figsize = (8, 6))
-        plt.scatter( x = data[ a ],
-                     y = data[ b ],
-                     c = data[ 'colorMF' ],
-                     s = data[ 'weightMF' ],
-                     edgecolors='none',
-                     alpha = 0.5,
-                     )
-        plt.xlabel( a )
-        plt.ylabel( b )
-        plt.legend( handles=legend_elementsMF, loc='upper center', bbox_to_anchor=( 1.025, 1.15))
-        plt.savefig( 'plots/MF/'+a+'_'+b+'.pdf' )
-        plt.savefig( 'plots/MF/'+a+'_'+b+'.png' )
-        plt.close()
-
-
-    for a,b in pairs:
-        print( a, b )
-        plt.figure(figsize = (8, 6))
-        plt.scatter( x = data[ a ],
-                     y = data[ b ],
-                     c = data[ 'colorCC' ],
-                     s = data[ 'weightCC' ],
-                     edgecolors='none',
-                     alpha = 0.5,
-                     )
-        plt.xlabel( a )
-        plt.ylabel( b )
-        plt.legend( handles=legend_elementsCC, loc='upper center', bbox_to_anchor=( 1.025, 1.15))
-        plt.savefig( 'plots/CC/'+a+'_'+b+'.pdf' )
-        plt.savefig( 'plots/CC/'+a+'_'+b+'.png' )
-        plt.close()
-
-
-    for a,b in pairs:
-        print( a, b )
-        plt.figure(figsize = (8, 6))
-        plt.scatter( x = data[ a ],
-                     y = data[ b ],
-                     c = data[ 'colorCL' ],
-                     s = data[ 'weightCL' ],
-                     edgecolors='none',
-                     alpha = 0.5,
-                     )
-        plt.xlabel( a )
-        plt.ylabel( b )
-        plt.legend( handles=legend_elementsCL, loc='upper center', bbox_to_anchor=( 1.025, 1.15))
-#        plt.show()
-        plt.savefig( 'plots/CL/'+a+'_'+b+'.pdf' )
-        plt.savefig( 'plots/CL/'+a+'_'+b+'.png' )
-        plt.close()
+#    for a,b in pairs:
+#        print( a, b )
+#        plt.figure(figsize = (12, 9))
+#        plt.scatter( x = data[ a ],
+#                     y = data[ b ],
+#                     c = data[ 'color' ],
+#                     s = data[ 'weight' ],
+#                     edgecolors='none',
+#                     alpha = 0.5,
+#                     )
+#        plt.xlabel( a )
+#        plt.ylabel( b )
+#        plt.legend( handles=legend_elements, loc='upper center', bbox_to_anchor=( 1.025, 1.15))
+##        plt.show()
+#        plt.savefig( 'plots/all_cats/'+a+'_'+b+'.pdf' )
+#        plt.savefig( 'plots/all_cats/'+a+'_'+b+'.png' )
+#        plt.close()
+#
+#
+#    for a,b in pairs:
+#        print( a, b )
+#        plt.figure(figsize = (8, 6))
+#        plt.scatter( x = data[ a ],
+#                     y = data[ b ],
+#                     c = data[ 'colorMF' ],
+#                     s = data[ 'weightMF' ],
+#                     edgecolors='none',
+#                     alpha = 0.5,
+#                     )
+#        plt.xlabel( a )
+#        plt.ylabel( b )
+#        plt.legend( handles=legend_elementsMF, loc='upper center', bbox_to_anchor=( 1.025, 1.15))
+#        plt.savefig( 'plots/MF/'+a+'_'+b+'.pdf' )
+#        plt.savefig( 'plots/MF/'+a+'_'+b+'.png' )
+#        plt.close()
+#
+#
+#    for a,b in pairs:
+#        print( a, b )
+#        plt.figure(figsize = (8, 6))
+#        plt.scatter( x = data[ a ],
+#                     y = data[ b ],
+#                     c = data[ 'colorCC' ],
+#                     s = data[ 'weightCC' ],
+#                     edgecolors='none',
+#                     alpha = 0.5,
+#                     )
+#        plt.xlabel( a )
+#        plt.ylabel( b )
+#        plt.legend( handles=legend_elementsCC, loc='upper center', bbox_to_anchor=( 1.025, 1.15))
+#        plt.savefig( 'plots/CC/'+a+'_'+b+'.pdf' )
+#        plt.savefig( 'plots/CC/'+a+'_'+b+'.png' )
+#        plt.close()
+#
+#
+#    for a,b in pairs:
+#        print( a, b )
+#        plt.figure(figsize = (8, 6))
+#        plt.scatter( x = data[ a ],
+#                     y = data[ b ],
+#                     c = data[ 'colorCL' ],
+#                     s = data[ 'weightCL' ],
+#                     edgecolors='none',
+#                     alpha = 0.5,
+#                     )
+#        plt.xlabel( a )
+#        plt.ylabel( b )
+#        plt.legend( handles=legend_elementsCL, loc='upper center', bbox_to_anchor=( 1.025, 1.15))
+##        plt.show()
+#        plt.savefig( 'plots/CL/'+a+'_'+b+'.pdf' )
+#        plt.savefig( 'plots/CL/'+a+'_'+b+'.png' )
+#        plt.close()

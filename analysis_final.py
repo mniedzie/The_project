@@ -29,12 +29,18 @@ if __name__ == '__main__' :
 
     # remove non-adults as I expect them not to be targets of the campaign, though they do seem to purchase the products sometimes.
     # remove also the clients with very high campaign revenue (removes 3 points)
+    print( data['Client'].size )
     data = data[ data[ 'Age' ] > 17 ]
+    print( data['Client'].size )
     data_predict = data[data['Sale_MF'].isna()]
     data = data[data['Sale_MF'].notna()]
+    print( data['Client'].size )
     data = data[ data[ 'Revenue_MF' ] < 150 ]
+    print( data['Client'].size )
     data = data[ data[ 'Revenue_CC' ] < 250 ]
+    print( data['Client'].size )
     data = data[ data[ 'Revenue_CL' ] < 50 ]
+    print( data['Client'].size )
 
     # split into the set I'll be working with and the set to provide predition for
 
@@ -78,8 +84,8 @@ if __name__ == '__main__' :
 
     # I have all the data processed, I can start analysing it. 
 
-    trainings = 2
-    nepochs = 30
+    trainings = 20
+    nepochs = 300
 
     counts = []       
     pred_revs = []    
@@ -120,6 +126,10 @@ if __name__ == '__main__' :
             verbose=2,
             batch_size=64,
         )
+        if j == 0:
+            tf.keras.utils.plot_model(model,
+                                      show_shapes=True,
+                                      to_file='model.pdf')
 
         train_loss = training_history.history['loss']
         train_losses.append( train_loss )
@@ -130,6 +140,9 @@ if __name__ == '__main__' :
         output = np.concatenate( [ class_prediction, regre_prediction ], axis = 1 )
         predictions += output
 
+#######################################################
+#    I summarize the results here
+#######################################################
     # Normalize prediction sum by # of trainings, to get the average, scale the revenues back
     prediction = predictions/trainings
     scaled_prediction = np.ndarray.copy(prediction)
@@ -138,40 +151,14 @@ if __name__ == '__main__' :
     scaled_prediction[:,5] = scaled_prediction[:,5] * CL_std + CL_mean
     # get the count of the clients got right, and the revenue values and save it for future
 
-    targets, method, pred_rev = get_predictions_IDs( predict_IDs_arr, prediction, 1 )
-    for i in range( len( targets ) ):
-        print(targets[i], method[i], pred_rev[i])
+    targets, method, pred_rev = get_predictions_IDs( predict_IDs_arr, scaled_prediction, 4 )
     unique, frequency = np.unique(method,
                               return_counts = True) 
     print( unique )
     print( frequency )
+    collected_results = np.vstack(( targets, method, pred_rev )).T
+    results_df = pd.DataFrame( collected_results, columns=[ 'Client', 'Campaign', 'pred_rev' ] )
+    results_df['Campaign']=results_df['Campaign'].replace([0,1,2],['MF','CC','CL'])
+    results_df.to_csv( "results.csv", index=True )
 
-#######################################################
-#    I summarize the results here
-#######################################################
 
-#    collected_results = np.concatenate( ( np.array( targeteds ), 
-#                                          np.array( counts ),    
-#                                          np.array( true_revs ),  
-#                                          ), axis=1 )
-#    results_df = pd.DataFrame( collected_results, columns=[ 'targeted', 'NN_1',      'NN_2',      'NN_3',      'NN_4',      'NN_5',
-#                                                                        'NN_pred1',  'NN_pred2',  'NN_pred3',  'NN_pred4',  'NN_pred5'] )
-#    results_df.loc['mean'] = results_df.mean()
-#    results_df.loc['std'] = results_df.std()
-#    results_df.loc['sum'] = results_df.sum()
-#    results_df = results_df.round(2)
-#    results_df.to_csv( "results_NN_XGB.csv", index=True )
-#
-#    tex_table( results_df, ['NN_1',      'NN_2',      'NN_3',      'NN_4',      'NN_5'], "report/tables/NN_counts.tex",
-#                            "Clients who bought the marketed product, results from NN using sort and selection methods 1-5. " )
-#    tex_table( results_df, ['xgb_1',      'xgb_2',      'xgb_3',      'xgb_4',      'xgb_5'], "report/tables/xgb_counts.tex",
-#                            "Clients who bought the marketed product, results from XGBoost using sort and selection methods 1-5. " )
-#    tex_table( results_df, ['cls_1',      'cls_2',      'cls_3',      'cls_4',      'cls_5'], "report/tables/cls_counts.tex",
-#                            "Clients who bought the marketed product, results from cls using sort and selection methods 1-5. " )
-#
-#    tex_table( results_df, ['NN_pred1',      'NN_pred2',      'NN_pred3',      'NN_pred4',      'NN_pred5'], "report/tables/NN_predRev.tex",
-#                        "Predicted revenue achieved, results from NN using sort and selection methods 1-5. " )
-#    tex_table( results_df, ['xgb_pred1',      'xgb_pred2',      'xgb_pred3',      'xgb_pred4',      'xgb_pred5'], "report/tables/xgb_predRev.tex",
-#                        "Predicted revenue achieved, results from XGBboost using sort and selection methods 1-5. " )
-#    tex_table( results_df, ['cls_pred1',      'cls_pred2',      'cls_pred3',      'cls_pred4',      'cls_pred5'], "report/tables/cls_predRev.tex",
-#                        "Predicted revenue achieved, results from SGDclassification and LinRegression using sort and selection methods 1-5. " )
