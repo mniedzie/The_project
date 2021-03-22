@@ -41,7 +41,8 @@ def compileModel( model ):
         optimizer = tf.keras.optimizers.Nadam(),
         loss = [ tf.keras.losses.BinaryCrossentropy(), tf.keras.losses.MeanSquaredError() ],
         # to make sure that regression loss does not dominate the learning
-        loss_weights = [ 200., 1.],
+        # was necessary before i normalized the revenues.
+#        loss_weights = [ 200., 1.],
     )
 
 
